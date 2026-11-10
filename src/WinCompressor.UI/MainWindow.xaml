@@ -1,0 +1,1106 @@
+<Window x:Class="WinCompressor.UI.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:WinCompressor.UI.ViewModels"
+        xmlns:conv="clr-namespace:WinCompressor.UI.Converters"
+        xmlns:models="clr-namespace:WinCompressor.Core.Models;assembly=WinCompressor.Core"
+        mc:Ignorable="d"
+        Title="WinCompressor - Windows Yerel Sıkıştırma Yöneticisi"
+        Height="880" Width="1280"
+        MinHeight="720" MinWidth="1020"
+        WindowStartupLocation="CenterScreen"
+        Background="#181818"
+        Foreground="#FFFFFF"
+        FontFamily="Segoe UI Variable Text, Segoe UI, sans-serif"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        AllowDrop="True"
+        Drop="Window_Drop"
+        DragOver="Window_DragOver">
+
+    <Window.Resources>
+        <!-- Converters -->
+        <conv:ByteSizeConverter x:Key="ByteSizeConv" />
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisConv" />
+        <conv:BoolToVisibilityConverter x:Key="InverseBoolToVisConv" Inverse="True" />
+        <conv:EnumToBoolConverter x:Key="EnumToBoolConv" />
+        <conv:StatusToBrushConverter x:Key="StatusToBrushConv" />
+
+        <!-- Accent Colors -->
+        <SolidColorBrush x:Key="AccentBrush" Color="#0078D4" />
+        <SolidColorBrush x:Key="AccentHoverBrush" Color="#1084D9" />
+        <SolidColorBrush x:Key="AccentPressedBrush" Color="#006CBE" />
+        <SolidColorBrush x:Key="CardBackgroundBrush" Color="#252526" />
+        <SolidColorBrush x:Key="BorderBrush" Color="#333337" />
+
+        <!-- Accent Button Style -->
+        <Style x:Key="AccentButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{StaticResource AccentBrush}" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="16,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AccentHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="{StaticResource AccentPressedBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#2D2D30" />
+                                <Setter Property="Foreground" Value="#666666" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Secondary Button Style -->
+        <Style x:Key="SecondaryButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2A2A2D" />
+            <Setter Property="Foreground" Value="#E0E0E0" />
+            <Setter Property="FontWeight" Value="Normal" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#333337" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#444448" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#202022" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#1E1E1E" />
+                                <Setter Property="Foreground" Value="#555555" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#282828" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Danger Button Style -->
+        <Style x:Key="DangerButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#A82315" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Padding" Value="14,8" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                CornerRadius="5" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#C42B1C" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#8F1D11" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#2D2D30" />
+                                <Setter Property="Foreground" Value="#666666" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Quick Drive Button Style -->
+        <Style x:Key="QuickDriveButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#2A2A2D" />
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#38383D" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1E1E1E" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Filter Chip RadioButton Style -->
+        <Style x:Key="FilterChipRadioStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#CCCCCC" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="chipBorder" Background="#252528"
+                                BorderBrush="{StaticResource BorderBrush}"
+                                BorderThickness="1" CornerRadius="12" Padding="10,4">
+                            <ContentPresenter VerticalAlignment="Center" HorizontalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="chipBorder" Property="Background" Value="{StaticResource AccentBrush}" />
+                                <Setter TargetName="chipBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="chipBorder" Property="BorderBrush" Value="#00BCF8" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Small Toolbar Button Style -->
+        <Style x:Key="FilterSmallButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#252528" />
+            <Setter Property="Foreground" Value="#DDDDDD" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="8,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#38383D" />
+                                <Setter TargetName="border" Property="BorderBrush" Value="#00BCF8" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#1E1E1E" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="border" Property="Background" Value="#1E1E1E" />
+                                <Setter Property="Foreground" Value="#555555" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern Dark TextBox -->
+        <Style x:Key="DarkTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background" Value="#202022" />
+            <Setter Property="Foreground" Value="#FFFFFF" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding" Value="10,7" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="CaretBrush" Value="#00BCF8" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ScrollViewer x:Name="PART_ContentHost" Margin="0" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="#4A4A50" />
+                            </Trigger>
+                            <Trigger Property="IsFocused" Value="True">
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Modern Dark CheckBox -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#DDDDDD" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+        </Style>
+
+        <!-- Dark DataGrid ColumnHeader -->
+        <Style TargetType="DataGridColumnHeader">
+            <Setter Property="Background" Value="#1E1E20" />
+            <Setter Property="Foreground" Value="#BBBBBB" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Padding" Value="10,8" />
+            <Setter Property="BorderThickness" Value="0,0,1,1" />
+            <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+        </Style>
+
+        <!-- Dark DataGrid Cell -->
+        <Style TargetType="DataGridCell">
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="DataGridCell">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderThickness="0"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="Transparent" />
+                    <Setter Property="Foreground" Value="#FFFFFF" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <!-- 0: Header -->
+            <RowDefinition Height="Auto" />
+            <!-- 1: Folder Selection & Scan Bar -->
+            <RowDefinition Height="Auto" />
+            <!-- 2: Algorithm Selector Cards -->
+            <RowDefinition Height="Auto" />
+            <!-- 3: Search & Filter Toolbar + Main DataGrid -->
+            <RowDefinition Height="*" />
+            <!-- 4: Activity Log Drawer (Collapsible) -->
+            <RowDefinition Height="Auto" />
+            <!-- 5: Footer / Storage Bar & Action Bar -->
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ========================================== -->
+        <!-- ROW 0: HEADER                              -->
+        <!-- ========================================== -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- App Title & Subtitle -->
+            <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="⚡ WinCompressor" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,8,0" />
+                    <Border Background="#2D2D30" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="6,0,0,0">
+                        <TextBlock Text="v2.1 GUI Pro" FontSize="11" Foreground="#00BCF8" FontWeight="SemiBold" />
+                    </Border>
+                </StackPanel>
+                <TextBlock Text="Windows Yerel Sıkıştırma Yöneticisi • NTFS LZNT1 &amp; CompactOS WOF (XPRESS / LZX) Şeffaf Sıkıştırma"
+                           FontSize="12" Foreground="#8C8C8C" Margin="0,4,0,0" />
+            </StackPanel>
+
+            <!-- Admin Status Pill -->
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Admin Mode Pill -->
+                <Border Background="#163824" BorderBrush="#27AE60" BorderThickness="1"
+                        CornerRadius="16" Padding="12,6"
+                        Visibility="{Binding IsAdministrator, Converter={StaticResource BoolToVisConv}}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="🛡️" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Yönetici Modu (LZX ve XPRESS Aktif)" FontSize="12" FontWeight="SemiBold" Foreground="#2ECC71" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Non-Admin Mode Pill -->
+                <Button Style="{StaticResource QuickDriveButtonStyle}"
+                        Background="#3D2E0B" BorderBrush="#D48806"
+                        Command="{Binding RestartAsAdminCommand}"
+                        Visibility="{Binding IsAdministrator, Converter={StaticResource InverseBoolToVisConv}}"
+                        ToolTip="Gelişmiş LZX ve XPRESS CompactOS algoritmalarını kullanabilmek için yönetici olarak yeniden başlatın.">
+                    <StackPanel Orientation="Horizontal" Margin="4,2">
+                        <TextBlock Text="⚠️" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="Standart Mod (Yönetici Olarak Yeniden Başlat)" FontSize="12" FontWeight="SemiBold" Foreground="#FFD33D" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Grid>
+
+        <!-- ========================================== -->
+        <!-- ROW 1: FOLDER SELECTION & OPTIONS BAR      -->
+        <!-- ========================================== -->
+        <Border Grid.Row="1" Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="14" Margin="0,0,0,12">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Folder Path Input & Browse -->
+                <Grid Grid.Row="0" Grid.Column="0" Margin="0,0,12,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBox Grid.Column="0" Text="{Binding SelectedPath, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBoxStyle}"
+                             VerticalAlignment="Center" />
+
+                    <Button Grid.Column="1" Content="📁 Gözat..."
+                             Command="{Binding BrowseFolderCommand}"
+                             Style="{StaticResource SecondaryButtonStyle}"
+                             Margin="8,0,0,0" VerticalAlignment="Center" />
+                </Grid>
+
+                <!-- Big Prominent TARA (SCAN) Button -->
+                <Button Grid.Row="0" Grid.RowSpan="2" Grid.Column="1"
+                        Command="{Binding ScanCommand}"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Width="160" Height="76"
+                        VerticalAlignment="Stretch" HorizontalAlignment="Right">
+                    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock Text="🔍 TARA" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" />
+                        <TextBlock Text="Klasörü İncele" FontSize="11" Foreground="#D0E8FF" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Button>
+
+                <!-- Quick Buttons & Checkboxes -->
+                <WrapPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
+                        <TextBlock Text="Hızlı:" Foreground="#888888" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Button Content="C: Sürücüsü" Style="{StaticResource QuickDriveButtonStyle}"
+                                Command="{Binding QuickSelectDriveCommand}" CommandParameter="C:\" Margin="0,0,6,0" />
+                        <Button Content="D: Sürücüsü" Style="{StaticResource QuickDriveButtonStyle}"
+                                Command="{Binding QuickSelectDriveCommand}" CommandParameter="D:\" Margin="0,0,6,0" />
+                        <Button Content="Kullanıcı Klasörü" Style="{StaticResource QuickDriveButtonStyle}"
+                                Command="{Binding QuickSelectDriveCommand}" CommandParameter="USER" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <CheckBox Content="Alt klasörleri dahil et"
+                                  IsChecked="{Binding IncludeSubdirectories}"
+                                  Margin="0,0,18,0" />
+                        <CheckBox Content="Sadece sıkıştırılmamış dosyaları listele"
+                                  IsChecked="{Binding OnlyUncompressed}" />
+                    </StackPanel>
+                </WrapPanel>
+            </Grid>
+        </Border>
+
+        <!-- ========================================== -->
+        <!-- ROW 2: ALGORITHM SELECTOR CARD BAR        -->
+        <!-- ========================================== -->
+        <Border Grid.Row="2" Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="14,10" Margin="0,0,0,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock Text="Sıkıştırma" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                    <TextBlock Text="Algoritması:" FontSize="12" FontWeight="SemiBold" Foreground="#00BCF8" />
+                </StackPanel>
+
+                <!-- Card 1: LZX (CompactOS) -->
+                <RadioButton Grid.Column="1" GroupName="AlgorithmGroup" Margin="0,0,8,0"
+                             IsChecked="{Binding SelectedAlgorithm, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static models:CompressionAlgorithm.Lzx}}"
+                             Cursor="Hand">
+                    <RadioButton.Template>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1.5" CornerRadius="5" Padding="10,8">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="LZX (CompactOS)" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
+
+                                    <Border Grid.Row="0" Grid.Column="1" Background="#0E4A28" CornerRadius="3" Padding="5,1">
+                                        <TextBlock Text="ÖNERİLEN" FontSize="9" FontWeight="Bold" Foreground="#2ECC71" />
+                                    </Border>
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                               Text="Maksimum Tasarruf | %40-%70 Kazanç"
+                                               FontSize="11" Foreground="#00BCF8" Margin="0,3,0,0" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                               Text="Oyunlar, programlar ve arşiv dosyaları için ideal."
+                                               FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+
+                <!-- Card 2: XPRESS 8K (CompactOS) -->
+                <RadioButton Grid.Column="2" GroupName="AlgorithmGroup" Margin="0,0,8,0"
+                             IsChecked="{Binding SelectedAlgorithm, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static models:CompressionAlgorithm.Xpress8K}}"
+                             Cursor="Hand">
+                    <RadioButton.Template>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1.5" CornerRadius="5" Padding="10,8">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="XPRESS 8K" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
+
+                                    <TextBlock Grid.Row="1" Text="Dengeli | Hızlı sıkıştırma ve açma"
+                                               FontSize="11" Foreground="#F39C12" Margin="0,3,0,0" />
+
+                                    <TextBlock Grid.Row="2" Text="Düşük CPU kullanımı ile hızlı okuma."
+                                               FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+
+                <!-- Card 3: NTFS (LZNT1) -->
+                <RadioButton Grid.Column="3" GroupName="AlgorithmGroup"
+                             IsChecked="{Binding SelectedAlgorithm, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static models:CompressionAlgorithm.Ntfs}}"
+                             Cursor="Hand">
+                    <RadioButton.Template>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
+                                    BorderThickness="1.5" CornerRadius="5" Padding="10,8">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Text="NTFS (LZNT1)" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
+
+                                    <TextBlock Grid.Row="1" Text="Klasik NTFS | Standart kullanıcı hakları"
+                                               FontSize="11" Foreground="#AAAAAA" Margin="0,3,0,0" />
+
+                                    <TextBlock Grid.Row="2" Text="Yönetici yetkisi gerekmez, geniş uyumluluk."
+                                               FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </RadioButton.Template>
+                </RadioButton>
+            </Grid>
+        </Border>
+
+        <!-- ========================================== -->
+        <!-- ROW 3: SEARCH & FILTER TOOLBAR + DATAGRID  -->
+        <!-- ========================================== -->
+        <Border Grid.Row="3" Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Margin="0,0,0,10" ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <!-- 0: Search & Filter Toolbar -->
+                    <RowDefinition Height="Auto" />
+                    <!-- 1: DataGrid & Empty Placeholder -->
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <!-- Search & Filter Toolbar Header -->
+                <Border Grid.Row="0" Background="#1E1E20" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="12,8">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <!-- Search Box -->
+                            <ColumnDefinition Width="Auto" />
+                            <!-- Category Filter Chips -->
+                            <ColumnDefinition Width="*" />
+                            <!-- Selection Toolbar & Count Badge -->
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Search Box with Clear Button & Placeholder -->
+                        <Grid Grid.Column="0" Width="270" Margin="0,0,12,0" VerticalAlignment="Center">
+                            <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                     Style="{StaticResource DarkTextBoxStyle}"
+                                     Padding="10,6,28,6"
+                                     VerticalAlignment="Center" />
+
+                            <TextBlock Text="🔍 Dosya adı, uzantı veya klasör ara..."
+                                       Foreground="#777777"
+                                       FontSize="12"
+                                       Margin="10,0,0,0"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <Button Content="✕"
+                                    Command="{Binding ClearSearchCommand}"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Center"
+                                    Margin="0,0,6,0"
+                                    Width="20" Height="20"
+                                    Cursor="Hand"
+                                    Background="Transparent"
+                                    Foreground="#999999"
+                                    BorderThickness="0"
+                                    FontSize="10">
+                                <Button.Style>
+                                    <Style TargetType="Button">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding SearchText}" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </Button.Style>
+                            </Button>
+                        </Grid>
+
+                        <!-- Filter Chips -->
+                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                            <RadioButton Content="Tümü"
+                                         GroupName="CategoryFilterGroup"
+                                         Style="{StaticResource FilterChipRadioStyle}"
+                                         IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.All}}" />
+                            <RadioButton Content="Programlar"
+                                         GroupName="CategoryFilterGroup"
+                                         Style="{StaticResource FilterChipRadioStyle}"
+                                         IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.Executables}}" />
+                            <RadioButton Content="Büyük (>50MB)"
+                                         GroupName="CategoryFilterGroup"
+                                         Style="{StaticResource FilterChipRadioStyle}"
+                                         IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.LargeFiles}}" />
+                            <RadioButton Content="Metin &amp; Kod"
+                                         GroupName="CategoryFilterGroup"
+                                         Style="{StaticResource FilterChipRadioStyle}"
+                                         IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.TextCode}}" />
+                            <RadioButton Content="Veri &amp; Oyun"
+                                         GroupName="CategoryFilterGroup"
+                                         Style="{StaticResource FilterChipRadioStyle}"
+                                         IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.DataMedia}}" />
+                        </WrapPanel>
+
+                        <!-- Selection Toolbar & Count Badge -->
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Content="Tümünü Seç"
+                                    Command="{Binding SelectAllCommand}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
+                                    ToolTip="Görüntülenen dosyaların tümünü seç" />
+                            <Button Content="Temizle"
+                                    Command="{Binding DeselectAllCommand}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
+                                    Margin="4,0,0,0"
+                                    ToolTip="Tüm seçimleri kaldır" />
+                            <Button Content="Tersine Çevir"
+                                    Command="{Binding InvertSelectionCommand}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
+                                    Margin="4,0,0,0"
+                                    ToolTip="Mevcut dosya seçimlerini tersine çevir" />
+                            <Button Content="Büyükleri Seç (>50 MB)"
+                                    Command="{Binding SelectLargeFilesCommand}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
+                                    Margin="4,0,12,0"
+                                    ToolTip="50 MB ve üzeri büyük dosyaları seç" />
+
+                            <!-- Filtered vs Total Items Count Badge -->
+                            <Border Background="#2A2A2D" BorderBrush="#3F3F46" BorderThickness="1"
+                                    CornerRadius="12" Padding="10,4" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="📄 " FontSize="11" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding FilterCountText}" FontWeight="SemiBold" FontSize="11" Foreground="#00BCF8" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- DataGrid & Empty State -->
+                <Grid Grid.Row="1">
+                    <!-- Empty List Placeholder -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding Files.Count, Converter={StaticResource InverseBoolToVisConv}}">
+                        <TextBlock Text="📂" FontSize="44" HorizontalAlignment="Center" Margin="0,0,0,10" Opacity="0.6" />
+                        <TextBlock Text="Henüz dosya taranmadı" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
+                        <TextBlock Text="Yukarıdan taranacak klasörü seçip 'TARA' butonuna tıklayın." FontSize="12" Foreground="#888888" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid ItemsSource="{Binding FilesView}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserResizeRows="False"
+                              GridLinesVisibility="Horizontal"
+                              HorizontalGridLinesBrush="#2B2B2F"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              RowHeight="34"
+                              HeadersVisibility="Column"
+                              EnableRowVirtualization="True"
+                              EnableColumnVirtualization="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling">
+
+                        <!-- Row Style with Context Menu -->
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Setter Property="Background" Value="#252526" />
+                                <Setter Property="Foreground" Value="#EEEEEE" />
+                                <Setter Property="Height" Value="32" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                <Setter Property="ContextMenu">
+                                    <Setter.Value>
+                                        <ContextMenu Background="#202022" BorderBrush="#333337" BorderThickness="1">
+                                            <MenuItem Header="📂 Dosya Konumunu Aç"
+                                                      Foreground="#FFFFFF"
+                                                      Command="{Binding PlacementTarget.Tag.OpenFileLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator Background="#333337" Margin="2,4" />
+                                            <MenuItem Header="⚡ Bu Dosyayı Sıkıştır"
+                                                      Foreground="#00BCF8" FontWeight="SemiBold"
+                                                      Command="{Binding PlacementTarget.Tag.CompressSingleFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <MenuItem Header="📂 Sıkıştırmayı Kaldır"
+                                                      Foreground="#DDDDDD"
+                                                      Command="{Binding PlacementTarget.Tag.DecompressSingleFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator Background="#333337" Margin="2,4" />
+                                            <MenuItem Header="📋 Dosya Yolunu Kopyala"
+                                                      Foreground="#FFFFFF"
+                                                      Command="{Binding PlacementTarget.Tag.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                            <Separator Background="#333337" Margin="2,4" />
+                                            <MenuItem Header="❌ Listeden Çıkar"
+                                                      Foreground="#E74C3C"
+                                                      Command="{Binding PlacementTarget.Tag.ExcludeFromListCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                                      CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                                        </ContextMenu>
+                                    </Setter.Value>
+                                </Setter>
+                                <Style.Triggers>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter Property="Background" Value="#2F2F33" />
+                                    </Trigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#094771" />
+                                        <Setter Property="Foreground" Value="#FFFFFF" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+
+                        <DataGrid.Columns>
+                            <!-- Column 0: CheckBox -->
+                            <DataGridTemplateColumn Width="46">
+                                <DataGridTemplateColumn.HeaderTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  IsThreeState="True"
+                                                  ToolTip="Tümünü Seç / Seçimi Kaldır" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.HeaderTemplate>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 1: Dosya Adı -->
+                            <DataGridTemplateColumn Header="Dosya Adı" Width="260">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FileName}"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#FFFFFF"
+                                                   ToolTip="{Binding FilePath}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 2: Klasör Yolu -->
+                            <DataGridTemplateColumn Header="Klasör Yolu" Width="*">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding FilePath}"
+                                                   Foreground="#999999"
+                                                   FontSize="11"
+                                                   ToolTip="{Binding FilePath}"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 3: Orijinal Boyut (Descending Sorted) -->
+                            <DataGridTemplateColumn Header="Orijinal Boyut" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Size, Converter={StaticResource ByteSizeConv}}"
+                                                   Foreground="#FFFFFF"
+                                                   FontWeight="Normal"
+                                                   TextAlignment="Right"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 4: Diskteki Boyut -->
+                            <DataGridTemplateColumn Header="Diskteki Boyut" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding AllocatedSize, Converter={StaticResource ByteSizeConv}}"
+                                                   Foreground="#CCCCCC"
+                                                   TextAlignment="Right"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 5: Tahmini / Gerçek Tasarruf -->
+                            <DataGridTemplateColumn Header="Tasarruf" Width="140">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding SavingsText}"
+                                                   Foreground="#2ECC71"
+                                                   FontWeight="SemiBold"
+                                                   TextAlignment="Right"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 6: Durum -->
+                            <DataGridTemplateColumn Header="Durum" Width="120">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="3" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Status}"
+                                                       Foreground="{Binding Status, Converter={StaticResource StatusToBrushConv}}"
+                                                       FontWeight="SemiBold"
+                                                       FontSize="11" />
+                                        </Border>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </Grid>
+            </Grid>
+        </Border>
+
+        <!-- ========================================== -->
+        <!-- ROW 4: ACTIVITY LOG DRAWER (Collapsible)   -->
+        <!-- ========================================== -->
+        <Border Grid.Row="4" Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Margin="0,0,0,10" ClipToBounds="True">
+            <Expander IsExpanded="{Binding IsActivityLogVisible}"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      Foreground="#FFFFFF">
+                <Expander.Header>
+                    <Grid HorizontalAlignment="Stretch">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="📋 İşlem Günlüğü" FontWeight="SemiBold" FontSize="12" Foreground="#DDDDDD" />
+                            <Border Background="#2D2D30" CornerRadius="10" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding ActivityLogs.Count, StringFormat='{}{0} kayıt'}" FontSize="10" Foreground="#00BCF8" FontWeight="Bold" />
+                            </Border>
+                        </StackPanel>
+                        <Button Grid.Column="1" Content="Günlüğü Temizle"
+                                Command="{Binding ClearActivityLogsCommand}"
+                                Style="{StaticResource FilterSmallButtonStyle}"
+                                FontSize="11" Padding="8,2" Margin="0,0,8,0" />
+                    </Grid>
+                </Expander.Header>
+                <Border Background="#121214" BorderBrush="#26262A" BorderThickness="0,1,0,0" Height="130" Padding="8">
+                    <ListBox x:Name="LogListBox"
+                             ItemsSource="{Binding ActivityLogs}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Foreground="#00FF66"
+                             FontFamily="Cascadia Code, Consolas, Courier New, monospace"
+                             FontSize="11"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding}" Foreground="#8CE99A" Margin="0,1" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+            </Expander>
+        </Border>
+
+        <!-- ========================================== -->
+        <!-- ROW 5: FOOTER / STORAGE BAR & ACTION BAR   -->
+        <!-- ========================================== -->
+        <Border Grid.Row="5" Background="{StaticResource CardBackgroundBrush}"
+                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                CornerRadius="6" Padding="14,10">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <!-- Visual Segmented Storage Bar -->
+                    <RowDefinition Height="Auto" />
+                    <!-- Action Bar -->
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <!-- Dedicated Visual Segmented Storage Bar Section -->
+                <Border Grid.Row="0" Background="#1C1C1E" BorderBrush="#2D2D30" BorderThickness="1"
+                        CornerRadius="5" Padding="10,8" Margin="0,0,0,10">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <!-- Storage Details Row -->
+                        <Grid Grid.Row="0" Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="Depolama Metrikleri:" Foreground="#888888" FontSize="12" />
+                                <TextBlock Text="Orijinal: " Foreground="#AAAAAA" FontSize="12" Margin="8,0,0,0" />
+                                <TextBlock Text="{Binding TotalUncompressedBytes, Converter={StaticResource ByteSizeConv}}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12" />
+                                <TextBlock Text="  ➜  Diskteki: " Foreground="#AAAAAA" FontSize="12" Margin="6,0,0,0" />
+                                <TextBlock Text="{Binding TotalCompressedBytes, Converter={StaticResource ByteSizeConv}}" FontWeight="Bold" Foreground="#00BCF8" FontSize="12" />
+                                <TextBlock Text="  ➜  Kazanılan: " Foreground="#AAAAAA" FontSize="12" Margin="6,0,0,0" />
+                                <TextBlock Text="{Binding TotalSavedBytes, Converter={StaticResource ByteSizeConv}}" FontWeight="Bold" Foreground="#2ECC71" FontSize="12" />
+                            </StackPanel>
+
+                            <!-- Percentage Badge -->
+                            <Border Grid.Column="1" Background="#163824" BorderBrush="#27AE60" BorderThickness="1"
+                                    CornerRadius="4" Padding="8,3" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding SavingsPercentageText}"
+                                           FontWeight="Bold" Foreground="#2ECC71" FontSize="11" />
+                            </Border>
+                        </Grid>
+
+                        <!-- Proportional Segmented Storage Bar -->
+                        <Border Grid.Row="1" Height="10" Background="#262629" CornerRadius="5" ClipToBounds="True">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="{Binding CompressedWidthRatio}" />
+                                    <ColumnDefinition Width="{Binding SavedWidthRatio}" />
+                                </Grid.ColumnDefinitions>
+                                <!-- Disk Usage Segment (Blue) -->
+                                <Border Grid.Column="0" Background="#0078D4"
+                                        ToolTip="Diskte kaplanan boyut" />
+                                <!-- Reclaimed Savings Segment (Green) -->
+                                <Border Grid.Column="1" Background="#2ECC71"
+                                        ToolTip="Geri kazanılan tasarruf alanı" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Action Bar & Progress -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <!-- Left: Metrics / Info -->
+                        <ColumnDefinition Width="Auto" />
+                        <!-- Center: Progress -->
+                        <ColumnDefinition Width="*" />
+                        <!-- Right: Action Buttons -->
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left Stats -->
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="Taranan: " Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{Binding TotalFilesFound}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12" />
+                            <TextBlock Text=" dosya (" Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{Binding TotalBytesFound, Converter={StaticResource ByteSizeConv}}" Foreground="#FFFFFF" FontSize="12" />
+                            <TextBlock Text=")  |  Seçili: " Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{Binding SelectedFilesCount}" FontWeight="Bold" Foreground="#00BCF8" FontSize="12" />
+                            <TextBlock Text=" dosya (" Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{Binding SelectedFilesTotalSize, Converter={StaticResource ByteSizeConv}}" Foreground="#00BCF8" FontSize="12" />
+                            <TextBlock Text=")" Foreground="#888888" FontSize="12" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                            <TextBlock Text="Kazanılan Alan: " Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{Binding TotalBytesSaved, Converter={StaticResource ByteSizeConv}}"
+                                       FontWeight="Bold" Foreground="#2ECC71" FontSize="13" />
+                            <TextBlock Text="  •  Durum: " Foreground="#888888" FontSize="12" Margin="10,0,0,0" />
+                            <TextBlock Text="{Binding StatusMessage}" Foreground="#CCCCCC" FontSize="12" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <!-- Center: Progress Bar & Info -->
+                    <Grid Grid.Column="1" VerticalAlignment="Center" Margin="0,0,20,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+
+                        <ProgressBar Grid.Row="0" Height="8" Minimum="0" Maximum="100"
+                                     Value="{Binding ProgressPercentage}"
+                                     Foreground="{StaticResource AccentBrush}"
+                                     Background="#202022" BorderThickness="0" />
+
+                        <TextBlock Grid.Row="1" Text="{Binding CurrentActionText}"
+                                   FontSize="11" Foreground="#AAAAAA"
+                                   TextTrimming="CharacterEllipsis"
+                                   Margin="0,4,0,0" HorizontalAlignment="Center" />
+                    </Grid>
+
+                    <!-- Right Action Buttons -->
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Cancel Button (Visible when busy) -->
+                        <Button Content="✕ İptal"
+                                Command="{Binding CancelCommand}"
+                                Style="{StaticResource DangerButtonStyle}"
+                                Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisConv}}"
+                                Margin="0,0,8,0" />
+
+                        <!-- Decompress Selected Button -->
+                        <Button Content="📂 Sıkıştırmayı Kaldır"
+                                Command="{Binding DecompressSelectedCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,0"
+                                ToolTip="Seçili dosyaları sıkıştırılmamış orijinal durumlarına döndürür." />
+
+                        <!-- Compress Selected Button (Main Accent) -->
+                        <Button Content="⚡ Seçilenleri Sıkıştır"
+                                Command="{Binding CompressSelectedCommand}"
+                                Style="{StaticResource AccentButtonStyle}"
+                                ToolTip="Seçili dosyaları seçilen algoritma ile sıkıştırır." />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
