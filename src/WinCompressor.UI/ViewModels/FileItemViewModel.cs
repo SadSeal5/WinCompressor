@@ -46,6 +46,33 @@ public class FileItemViewModel : ViewModelBase
         ? $"{ByteSizeConverter.Format(BytesSaved)} (%{SavingsPercentage:0.0})"
         : "-";
 
+    public long? EstimatedSavedBytes => _model.EstimatedSavedBytes;
+
+    /// <summary>Localized display text for the current on-disk algorithm.</summary>
+    public string AlgorithmText => CurrentAlgorithm switch
+    {
+        CompressionAlgorithm.None => "—",
+        CompressionAlgorithm.Ntfs => "NTFS",
+        CompressionAlgorithm.Xpress4K => "XPRESS 4K",
+        CompressionAlgorithm.Xpress8K => "XPRESS 8K",
+        CompressionAlgorithm.Xpress16K => "XPRESS 16K",
+        CompressionAlgorithm.Lzx => "LZX",
+        _ => "Bilinmiyor"
+    };
+
+    public string EstimatedSavingsText
+    {
+        get
+        {
+            var estimate = _model.EstimatedSavedBytes;
+            if (estimate is null || estimate <= 0)
+                return "-";
+
+            double percentage = Size > 0 ? (double)estimate.Value / Size * 100.0 : 0.0;
+            return $"~{ByteSizeConverter.Format(estimate.Value)} (%{percentage:0.0})";
+        }
+    }
+
     public void Refresh()
     {
         OnPropertyChanged(nameof(AllocatedSize));
@@ -57,5 +84,8 @@ public class FileItemViewModel : ViewModelBase
         OnPropertyChanged(nameof(ErrorMessage));
         OnPropertyChanged(nameof(IsCompressed));
         OnPropertyChanged(nameof(CurrentAlgorithm));
+        OnPropertyChanged(nameof(AlgorithmText));
+        OnPropertyChanged(nameof(EstimatedSavedBytes));
+        OnPropertyChanged(nameof(EstimatedSavingsText));
     }
 }

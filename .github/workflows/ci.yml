@@ -1,0 +1,67 @@
+# 4.1 Sürekli Entegrasyon: build + test (windows-latest) + Release single-file publish
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build-test-publish:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore WinCompressor.sln
+
+      - name: Build (Release, 0 uyarı politikası)
+        run: dotnet build WinCompressor.sln -c Release --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test WinCompressor.sln -c Release --no-build --logger "trx" --results-path test-results
+
+      - name: Publish single-file EXE (win-x64, self-contained)
+        run: dotnet publish src/WinCompressor.UI/WinCompressor.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o publish
+
+      # Faz 5.2: GUI passthrough'a ek olarak, betik kullanıcıları için ayrı konsol EXE'si.
+      - name: Publish CLI (framework-dependent)
+        run: dotnet publish src/WinCompressor.Cli/WinCompressor.Cli.csproj -c Release -o publish-cli
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinCompressor-win-x64
+          path: publish/WinCompressor.exe
+          if-no-files-found: error
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinCompressor.Cli
+          path: publish-cli/WinCompressor.Cli.exe
+          if-no-files-found: error
+
+      # 4.4 Kod imzalama (opsiyonel): Azure Trusted Signing hesabı yapılandırıldığında
+      # bu adımı etkinleştirin. Self-signed sertifika yalnızca KENDİ makinenizde
+      # "Bilinmeyen Yayıncı" uyarısını gizler; diğer kullanıcılarda değeri yoktur.
+      # - name: Sign EXE (Azure Trusted Signing)
+      #   uses: Azure/trusted-signing-action@v0
+      #   with:
+      #     azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+      #     azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+      #     azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+      #     endpoint: ${{ secrets.TRUSTED_SIGNING_ENDPOINT }}
+      #     trusted-signing-account-name: ${{ secrets.TRUSTED_SIGNING_ACCOUNT }}
+      #     certificate-profile-name: ${{ secrets.TRUSTED_SIGNING_PROFILE }}
+      #     files-folder: publish
+      #     files-folder-filter: exe

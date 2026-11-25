@@ -6,5 +6,8 @@ public enum FileCategory
     Executables,
     LargeFiles,
     TextCode,
-    DataMedia
+    DataMedia,
+
+    /// <summary>Files compressed with a CompactOS WOF algorithm (XPRESS / LZX).</summary>
+    CompactOs
 }

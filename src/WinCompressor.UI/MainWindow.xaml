@@ -5,9 +5,8 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:WinCompressor.UI.ViewModels"
         xmlns:conv="clr-namespace:WinCompressor.UI.Converters"
-        xmlns:models="clr-namespace:WinCompressor.Core.Models;assembly=WinCompressor.Core"
         mc:Ignorable="d"
-        Title="WinCompressor - Windows Yerel Sıkıştırma Yöneticisi"
+        Title="{DynamicResource WindowTitle}"
         Height="880" Width="1280"
         MinHeight="720" MinWidth="1020"
         WindowStartupLocation="CenterScreen"
@@ -25,6 +24,8 @@
         <conv:ByteSizeConverter x:Key="ByteSizeConv" />
         <conv:BoolToVisibilityConverter x:Key="BoolToVisConv" />
         <conv:BoolToVisibilityConverter x:Key="InverseBoolToVisConv" Inverse="True" />
+        <!-- T2-K1: Files.Count int olduğundan bool converter'la hep görünür kalıyordu. -->
+        <conv:CountToVisibilityConverter x:Key="EmptyCountToVisConv" />
         <conv:EnumToBoolConverter x:Key="EnumToBoolConv" />
         <conv:StatusToBrushConverter x:Key="StatusToBrushConv" />
 
@@ -287,6 +288,16 @@
             <Setter Property="BorderThickness" Value="0,0,1,1" />
             <Setter Property="BorderBrush" Value="{StaticResource BorderBrush}" />
             <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="ContextMenu">
+                <Setter.Value>
+                    <ContextMenu Background="#202022" BorderBrush="#333337" BorderThickness="1">
+                        <MenuItem Header="{DynamicResource HideColumnMenu}"
+                                  Foreground="#FFFFFF"
+                                  FontWeight="Normal"
+                                  Click="HideColumnMenuItem_Click" />
+                    </ContextMenu>
+                </Setter.Value>
+            </Setter>
         </Style>
 
         <!-- Dark DataGrid Cell -->
@@ -342,10 +353,10 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="⚡ WinCompressor" FontSize="22" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,8,0" />
                     <Border Background="#2D2D30" CornerRadius="4" Padding="6,2" VerticalAlignment="Center" Margin="6,0,0,0">
-                        <TextBlock Text="v2.1 GUI Pro" FontSize="11" Foreground="#00BCF8" FontWeight="SemiBold" />
+                        <TextBlock Text="{Binding AppVersionText}" FontSize="11" Foreground="#00BCF8" FontWeight="SemiBold" />
                     </Border>
                 </StackPanel>
-                <TextBlock Text="Windows Yerel Sıkıştırma Yöneticisi • NTFS LZNT1 &amp; CompactOS WOF (XPRESS / LZX) Şeffaf Sıkıştırma"
+                <TextBlock Text="{DynamicResource AppSubtitle}"
                            FontSize="12" Foreground="#8C8C8C" Margin="0,4,0,0" />
             </StackPanel>
 
@@ -357,7 +368,7 @@
                         Visibility="{Binding IsAdministrator, Converter={StaticResource BoolToVisConv}}">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="🛡️" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Yönetici Modu (LZX ve XPRESS Aktif)" FontSize="12" FontWeight="SemiBold" Foreground="#2ECC71" VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource AdminModePill}" FontSize="12" FontWeight="SemiBold" Foreground="#2ECC71" VerticalAlignment="Center" />
                     </StackPanel>
                 </Border>
 
@@ -366,10 +377,10 @@
                         Background="#3D2E0B" BorderBrush="#D48806"
                         Command="{Binding RestartAsAdminCommand}"
                         Visibility="{Binding IsAdministrator, Converter={StaticResource InverseBoolToVisConv}}"
-                        ToolTip="Gelişmiş LZX ve XPRESS CompactOS algoritmalarını kullanabilmek için yönetici olarak yeniden başlatın.">
+                        ToolTip="{DynamicResource RestartAsAdminToolTip}">
                     <StackPanel Orientation="Horizontal" Margin="4,2">
                         <TextBlock Text="⚠️" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="Standart Mod (Yönetici Olarak Yeniden Başlat)" FontSize="12" FontWeight="SemiBold" Foreground="#FFD33D" VerticalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource StandardModePill}" FontSize="12" FontWeight="SemiBold" Foreground="#FFD33D" VerticalAlignment="Center" />
                     </StackPanel>
                 </Button>
             </StackPanel>
@@ -402,7 +413,7 @@
                              Style="{StaticResource DarkTextBoxStyle}"
                              VerticalAlignment="Center" />
 
-                    <Button Grid.Column="1" Content="📁 Gözat..."
+                    <Button Grid.Column="1" Content="{DynamicResource BrowseButton}"
                              Command="{Binding BrowseFolderCommand}"
                              Style="{StaticResource SecondaryButtonStyle}"
                              Margin="8,0,0,0" VerticalAlignment="Center" />
@@ -415,30 +426,62 @@
                         Width="160" Height="76"
                         VerticalAlignment="Stretch" HorizontalAlignment="Right">
                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <TextBlock Text="🔍 TARA" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" />
-                        <TextBlock Text="Klasörü İncele" FontSize="11" Foreground="#D0E8FF" HorizontalAlignment="Center" Margin="0,2,0,0" />
+                        <TextBlock Text="{DynamicResource ScanButton}" FontSize="16" FontWeight="Bold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource ScanButtonSubtitle}" FontSize="11" Foreground="#D0E8FF" HorizontalAlignment="Center" Margin="0,2,0,0" />
                     </StackPanel>
                 </Button>
 
                 <!-- Quick Buttons & Checkboxes -->
                 <WrapPanel Grid.Row="1" Grid.Column="0" VerticalAlignment="Center">
                     <StackPanel Orientation="Horizontal" Margin="0,0,18,0">
-                        <TextBlock Text="Hızlı:" Foreground="#888888" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
-                        <Button Content="C: Sürücüsü" Style="{StaticResource QuickDriveButtonStyle}"
+                        <TextBlock Text="{DynamicResource QuickLabel}" Foreground="#888888" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <Button Content="{DynamicResource DriveCButton}" Style="{StaticResource QuickDriveButtonStyle}"
                                 Command="{Binding QuickSelectDriveCommand}" CommandParameter="C:\" Margin="0,0,6,0" />
-                        <Button Content="D: Sürücüsü" Style="{StaticResource QuickDriveButtonStyle}"
+                        <Button Content="{DynamicResource DriveDButton}" Style="{StaticResource QuickDriveButtonStyle}"
                                 Command="{Binding QuickSelectDriveCommand}" CommandParameter="D:\" Margin="0,0,6,0" />
-                        <Button Content="Kullanıcı Klasörü" Style="{StaticResource QuickDriveButtonStyle}"
+                        <Button Content="{DynamicResource UserFolderButton}" Style="{StaticResource QuickDriveButtonStyle}"
                                 Command="{Binding QuickSelectDriveCommand}" CommandParameter="USER" />
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <CheckBox Content="Alt klasörleri dahil et"
+                        <CheckBox Content="{DynamicResource IncludeSubdirsOption}"
                                   IsChecked="{Binding IncludeSubdirectories}"
                                   Margin="0,0,18,0" />
-                        <CheckBox Content="Sadece sıkıştırılmamış dosyaları listele"
-                                  IsChecked="{Binding OnlyUncompressed}" />
+                        <CheckBox Content="{DynamicResource OnlyUncompressedOption}"
+                                  IsChecked="{Binding OnlyUncompressed}"
+                                  Margin="0,0,18,0" />
+                        <CheckBox Content="{DynamicResource IncludeAppDataOption}"
+                                  IsChecked="{Binding IncludeAppData}"
+                                  ToolTip="{DynamicResource IncludeAppDataToolTip}" />
                     </StackPanel>
+
+                    <!-- Faz 5.5: kurulu oyun kütüphaneleri (varsa) -->
+                    <ItemsControl ItemsSource="{Binding GameLibraries}"
+                                  VerticalAlignment="Center"
+                                  Margin="4,0,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding DisplayName}"
+                                        Style="{StaticResource QuickDriveButtonStyle}"
+                                        Margin="0,0,6,0"
+                                        Command="{Binding DataContext.SelectGameLibraryCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                        CommandParameter="{Binding GamesPath}">
+                                    <Button.ToolTip>
+                                        <!-- StringFormat yerelleştirilemediğinden (Binding.StringFormat sabit
+                                             değerdir) tooltip Run kompozisyonuyla kurulur. -->
+                                        <TextBlock>
+                                            <Run Text="{DynamicResource GameLibraryToolTipPrefix}" /><Run Text="{Binding GamesPath}" />
+                                        </TextBlock>
+                                    </Button.ToolTip>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </WrapPanel>
             </Grid>
         </Border>
@@ -453,135 +496,77 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
-                    <TextBlock Text="Sıkıştırma" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
-                    <TextBlock Text="Algoritması:" FontSize="12" FontWeight="SemiBold" Foreground="#00BCF8" />
+                    <TextBlock Text="{DynamicResource CompressionLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#FFFFFF" />
+                    <TextBlock Text="{DynamicResource AlgorithmLabel}" FontSize="12" FontWeight="SemiBold" Foreground="#00BCF8" />
                 </StackPanel>
 
-                <!-- Card 1: LZX (CompactOS) -->
-                <RadioButton Grid.Column="1" GroupName="AlgorithmGroup" Margin="0,0,8,0"
-                             IsChecked="{Binding SelectedAlgorithm, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static models:CompressionAlgorithm.Lzx}}"
-                             Cursor="Hand">
-                    <RadioButton.Template>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1.5" CornerRadius="5" Padding="10,8">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
+                <!-- Algorithm cards: single source of truth is MainViewModel.AlgorithmOptions -->
+                <ItemsControl Grid.Column="1" ItemsSource="{Binding AlgorithmOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <UniformGrid Rows="1" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <RadioButton GroupName="AlgorithmGroup" Margin="0,0,8,0"
+                                         IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                         IsEnabled="{Binding IsEnabled}"
+                                         Cursor="Hand"
+                                         ToolTip="{Binding Description}">
+                                <RadioButton.Template>
+                                    <ControlTemplate TargetType="RadioButton">
+                                        <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
+                                                BorderThickness="1.5" CornerRadius="5" Padding="10,8">
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
 
-                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="LZX (CompactOS)" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
+                                                <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Name}" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" TextTrimming="CharacterEllipsis" />
 
-                                    <Border Grid.Row="0" Grid.Column="1" Background="#0E4A28" CornerRadius="3" Padding="5,1">
-                                        <TextBlock Text="ÖNERİLEN" FontSize="9" FontWeight="Bold" Foreground="#2ECC71" />
-                                    </Border>
+                                                <Border Grid.Row="0" Grid.Column="1" Background="#0E4A28" CornerRadius="3" Padding="5,1" Margin="6,0,0,0"
+                                                        Visibility="{Binding IsRecommended, Converter={StaticResource BoolToVisConv}}">
+                                                    <TextBlock Text="{DynamicResource RecommendedBadge}" FontSize="9" FontWeight="Bold" Foreground="#2ECC71" />
+                                                </Border>
 
-                                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
-                                               Text="Maksimum Tasarruf | %40-%70 Kazanç"
-                                               FontSize="11" Foreground="#00BCF8" Margin="0,3,0,0" />
+                                                <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                                                           Text="{Binding Subtitle}"
+                                                           FontSize="11" Foreground="{Binding SubtitleColor}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
 
-                                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
-                                               Text="Oyunlar, programlar ve arşiv dosyaları için ideal."
-                                               FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                    <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </RadioButton.Template>
-                </RadioButton>
-
-                <!-- Card 2: XPRESS 8K (CompactOS) -->
-                <RadioButton Grid.Column="2" GroupName="AlgorithmGroup" Margin="0,0,8,0"
-                             IsChecked="{Binding SelectedAlgorithm, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static models:CompressionAlgorithm.Xpress8K}}"
-                             Cursor="Hand">
-                    <RadioButton.Template>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1.5" CornerRadius="5" Padding="10,8">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <TextBlock Grid.Row="0" Text="XPRESS 8K" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
-
-                                    <TextBlock Grid.Row="1" Text="Dengeli | Hızlı sıkıştırma ve açma"
-                                               FontSize="11" Foreground="#F39C12" Margin="0,3,0,0" />
-
-                                    <TextBlock Grid.Row="2" Text="Düşük CPU kullanımı ile hızlı okuma."
-                                               FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                    <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </RadioButton.Template>
-                </RadioButton>
-
-                <!-- Card 3: NTFS (LZNT1) -->
-                <RadioButton Grid.Column="3" GroupName="AlgorithmGroup"
-                             IsChecked="{Binding SelectedAlgorithm, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static models:CompressionAlgorithm.Ntfs}}"
-                             Cursor="Hand">
-                    <RadioButton.Template>
-                        <ControlTemplate TargetType="RadioButton">
-                            <Border x:Name="cardBorder" Background="#202022" BorderBrush="{StaticResource BorderBrush}"
-                                    BorderThickness="1.5" CornerRadius="5" Padding="10,8">
-                                <Grid>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
-
-                                    <TextBlock Grid.Row="0" Text="NTFS (LZNT1)" FontWeight="Bold" FontSize="13" Foreground="#FFFFFF" />
-
-                                    <TextBlock Grid.Row="1" Text="Klasik NTFS | Standart kullanıcı hakları"
-                                               FontSize="11" Foreground="#AAAAAA" Margin="0,3,0,0" />
-
-                                    <TextBlock Grid.Row="2" Text="Yönetici yetkisi gerekmez, geniş uyumluluk."
-                                               FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                                </Grid>
-                            </Border>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
-                                    <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </RadioButton.Template>
-                </RadioButton>
+                                                <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                                                           Text="{Binding Description}"
+                                                           FontSize="10" Foreground="#888888" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
+                                            </Grid>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="cardBorder" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                                <Setter TargetName="cardBorder" Property="Background" Value="#172635" />
+                                            </Trigger>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="cardBorder" Property="BorderBrush" Value="#00BCF8" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="cardBorder" Property="Opacity" Value="0.45" />
+                                                <Setter TargetName="cardBorder" Property="Cursor" Value="No" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </RadioButton.Template>
+                            </RadioButton>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </Grid>
         </Border>
 
@@ -619,7 +604,7 @@
                                      Padding="10,6,28,6"
                                      VerticalAlignment="Center" />
 
-                            <TextBlock Text="🔍 Dosya adı, uzantı veya klasör ara..."
+                            <TextBlock Text="{DynamicResource SearchPlaceholder}"
                                        Foreground="#777777"
                                        FontSize="12"
                                        Margin="10,0,0,0"
@@ -669,49 +654,59 @@
 
                         <!-- Filter Chips -->
                         <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                            <RadioButton Content="Tümü"
+                            <RadioButton Content="{DynamicResource FilterAll}"
                                          GroupName="CategoryFilterGroup"
                                          Style="{StaticResource FilterChipRadioStyle}"
                                          IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.All}}" />
-                            <RadioButton Content="Programlar"
+                            <RadioButton Content="{DynamicResource FilterExecutables}"
                                          GroupName="CategoryFilterGroup"
                                          Style="{StaticResource FilterChipRadioStyle}"
                                          IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.Executables}}" />
-                            <RadioButton Content="Büyük (>50MB)"
+                            <RadioButton Content="{DynamicResource FilterLargeFiles}"
                                          GroupName="CategoryFilterGroup"
                                          Style="{StaticResource FilterChipRadioStyle}"
                                          IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.LargeFiles}}" />
-                            <RadioButton Content="Metin &amp; Kod"
+                            <RadioButton Content="{DynamicResource FilterTextCode}"
                                          GroupName="CategoryFilterGroup"
                                          Style="{StaticResource FilterChipRadioStyle}"
                                          IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.TextCode}}" />
-                            <RadioButton Content="Veri &amp; Oyun"
+                            <RadioButton Content="{DynamicResource FilterDataMedia}"
                                          GroupName="CategoryFilterGroup"
                                          Style="{StaticResource FilterChipRadioStyle}"
                                          IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.DataMedia}}" />
+                            <RadioButton Content="{DynamicResource FilterCompactOs}"
+                                         GroupName="CategoryFilterGroup"
+                                         Style="{StaticResource FilterChipRadioStyle}"
+                                         ToolTip="{DynamicResource FilterCompactOsToolTip}"
+                                         IsChecked="{Binding SelectedCategory, Converter={StaticResource EnumToBoolConv}, ConverterParameter={x:Static vm:FileCategory.CompactOs}}" />
                         </WrapPanel>
 
                         <!-- Selection Toolbar & Count Badge -->
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Content="Tümünü Seç"
+                            <Button Content="{DynamicResource SelectAllButton}"
                                     Command="{Binding SelectAllCommand}"
                                     Style="{StaticResource FilterSmallButtonStyle}"
-                                    ToolTip="Görüntülenen dosyaların tümünü seç" />
-                            <Button Content="Temizle"
+                                    ToolTip="{DynamicResource SelectAllToolTip}" />
+                            <Button Content="{DynamicResource DeselectAllButton}"
                                     Command="{Binding DeselectAllCommand}"
                                     Style="{StaticResource FilterSmallButtonStyle}"
                                     Margin="4,0,0,0"
-                                    ToolTip="Tüm seçimleri kaldır" />
-                            <Button Content="Tersine Çevir"
+                                    ToolTip="{DynamicResource DeselectAllToolTip}" />
+                            <Button Content="{DynamicResource InvertSelectionButton}"
                                     Command="{Binding InvertSelectionCommand}"
                                     Style="{StaticResource FilterSmallButtonStyle}"
                                     Margin="4,0,0,0"
-                                    ToolTip="Mevcut dosya seçimlerini tersine çevir" />
-                            <Button Content="Büyükleri Seç (>50 MB)"
+                                    ToolTip="{DynamicResource InvertSelectionToolTip}" />
+                            <Button Content="{DynamicResource SelectLargeFilesButton}"
                                     Command="{Binding SelectLargeFilesCommand}"
                                     Style="{StaticResource FilterSmallButtonStyle}"
+                                    Margin="4,0,0,0"
+                                    ToolTip="{DynamicResource SelectLargeFilesToolTip}" />
+                            <Button Content="{DynamicResource ColumnsButton}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
                                     Margin="4,0,12,0"
-                                    ToolTip="50 MB ve üzeri büyük dosyaları seç" />
+                                    Click="ResetColumnsButton_Click"
+                                    ToolTip="{DynamicResource ColumnsButtonToolTip}" />
 
                             <!-- Filtered vs Total Items Count Badge -->
                             <Border Background="#2A2A2D" BorderBrush="#3F3F46" BorderThickness="1"
@@ -729,18 +724,20 @@
                 <Grid Grid.Row="1">
                     <!-- Empty List Placeholder -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center"
-                                Visibility="{Binding Files.Count, Converter={StaticResource InverseBoolToVisConv}}">
+                                Visibility="{Binding Files.Count, Converter={StaticResource EmptyCountToVisConv}}">
                         <TextBlock Text="📂" FontSize="44" HorizontalAlignment="Center" Margin="0,0,0,10" Opacity="0.6" />
-                        <TextBlock Text="Henüz dosya taranmadı" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
-                        <TextBlock Text="Yukarıdan taranacak klasörü seçip 'TARA' butonuna tıklayın." FontSize="12" Foreground="#888888" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        <TextBlock Text="{DynamicResource EmptyStateTitle}" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" HorizontalAlignment="Center" />
+                        <TextBlock Text="{DynamicResource EmptyStateHint}" FontSize="12" Foreground="#888888" HorizontalAlignment="Center" Margin="0,4,0,0" />
                     </StackPanel>
 
                     <!-- DataGrid -->
-                    <DataGrid ItemsSource="{Binding FilesView}"
+                    <DataGrid x:Name="FilesDataGrid"
+                              ItemsSource="{Binding FilesView}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
                               CanUserResizeRows="False"
+                              CanUserSortColumns="True"
                               GridLinesVisibility="Horizontal"
                               HorizontalGridLinesBrush="#2B2B2F"
                               Background="Transparent"
@@ -750,7 +747,8 @@
                               EnableRowVirtualization="True"
                               EnableColumnVirtualization="True"
                               VirtualizingPanel.IsVirtualizing="True"
-                              VirtualizingPanel.VirtualizationMode="Recycling">
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              PreviewKeyDown="FilesDataGrid_PreviewKeyDown">
 
                         <!-- Row Style with Context Menu -->
                         <DataGrid.RowStyle>
@@ -760,29 +758,31 @@
                                 <Setter Property="Height" Value="32" />
                                 <Setter Property="BorderThickness" Value="0" />
                                 <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=DataGrid}}" />
+                                <!-- Çift tık: dosyayı varsayılan uygulamayla aç -->
+                                <EventSetter Event="MouseDoubleClick" Handler="FilesDataGridRow_MouseDoubleClick" />
                                 <Setter Property="ContextMenu">
                                     <Setter.Value>
                                         <ContextMenu Background="#202022" BorderBrush="#333337" BorderThickness="1">
-                                            <MenuItem Header="📂 Dosya Konumunu Aç"
+                                            <MenuItem Header="{DynamicResource OpenFileLocationMenu}"
                                                       Foreground="#FFFFFF"
                                                       Command="{Binding PlacementTarget.Tag.OpenFileLocationCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <Separator Background="#333337" Margin="2,4" />
-                                            <MenuItem Header="⚡ Bu Dosyayı Sıkıştır"
+                                            <MenuItem Header="{DynamicResource CompressSingleMenu}"
                                                       Foreground="#00BCF8" FontWeight="SemiBold"
                                                       Command="{Binding PlacementTarget.Tag.CompressSingleFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                            <MenuItem Header="📂 Sıkıştırmayı Kaldır"
+                                            <MenuItem Header="{DynamicResource DecompressSingleMenu}"
                                                       Foreground="#DDDDDD"
                                                       Command="{Binding PlacementTarget.Tag.DecompressSingleFileCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <Separator Background="#333337" Margin="2,4" />
-                                            <MenuItem Header="📋 Dosya Yolunu Kopyala"
+                                            <MenuItem Header="{DynamicResource CopyPathMenu}"
                                                       Foreground="#FFFFFF"
                                                       Command="{Binding PlacementTarget.Tag.CopyPathCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
                                             <Separator Background="#333337" Margin="2,4" />
-                                            <MenuItem Header="❌ Listeden Çıkar"
+                                            <MenuItem Header="{DynamicResource ExcludeFromListMenu}"
                                                       Foreground="#E74C3C"
                                                       Command="{Binding PlacementTarget.Tag.ExcludeFromListCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
                                                       CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
@@ -809,7 +809,7 @@
                                         <CheckBox IsChecked="{Binding DataContext.IsAllSelected, RelativeSource={RelativeSource AncestorType=DataGrid}}"
                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
                                                   IsThreeState="True"
-                                                  ToolTip="Tümünü Seç / Seçimi Kaldır" />
+                                                  ToolTip="{DynamicResource SelectAllHeaderToolTip}" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.HeaderTemplate>
                                 <DataGridTemplateColumn.CellTemplate>
@@ -821,7 +821,11 @@
                             </DataGridTemplateColumn>
 
                             <!-- Column 1: Dosya Adı -->
-                            <DataGridTemplateColumn Header="Dosya Adı" Width="260">
+                            <DataGridTemplateColumn Width="260"
+                                                     CanUserSort="True" SortMemberPath="FileName">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnFileName}" />
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding FileName}"
@@ -835,7 +839,11 @@
                             </DataGridTemplateColumn>
 
                             <!-- Column 2: Klasör Yolu -->
-                            <DataGridTemplateColumn Header="Klasör Yolu" Width="*">
+                            <DataGridTemplateColumn Width="*"
+                                                     CanUserSort="True" SortMemberPath="FilePath">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnFilePath}" />
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding FilePath}"
@@ -849,7 +857,11 @@
                             </DataGridTemplateColumn>
 
                             <!-- Column 3: Orijinal Boyut (Descending Sorted) -->
-                            <DataGridTemplateColumn Header="Orijinal Boyut" Width="120">
+                            <DataGridTemplateColumn Width="120"
+                                                     CanUserSort="True" SortMemberPath="Size">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnSize}" />
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Size, Converter={StaticResource ByteSizeConv}}"
@@ -864,7 +876,11 @@
                             </DataGridTemplateColumn>
 
                             <!-- Column 4: Diskteki Boyut -->
-                            <DataGridTemplateColumn Header="Diskteki Boyut" Width="120">
+                            <DataGridTemplateColumn Width="120"
+                                                     CanUserSort="True" SortMemberPath="AllocatedSize">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnAllocated}" />
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding AllocatedSize, Converter={StaticResource ByteSizeConv}}"
@@ -878,7 +894,11 @@
                             </DataGridTemplateColumn>
 
                             <!-- Column 5: Tahmini / Gerçek Tasarruf -->
-                            <DataGridTemplateColumn Header="Tasarruf" Width="140">
+                            <DataGridTemplateColumn Width="140"
+                                                     CanUserSort="True" SortMemberPath="BytesSaved">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnSavings}" />
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding SavingsText}"
@@ -892,8 +912,51 @@
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
 
-                            <!-- Column 6: Durum -->
-                            <DataGridTemplateColumn Header="Durum" Width="120">
+                            <!-- Column 6: Mevcut Algoritma (gerçek disk formatı) -->
+                            <DataGridTemplateColumn Width="110"
+                                                     CanUserSort="True" SortMemberPath="AlgorithmText">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnAlgorithm}" />
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding AlgorithmText}"
+                                                   ToolTip="{DynamicResource ColumnAlgorithmToolTip}"
+                                                   FontSize="11"
+                                                   Foreground="#00BCF8"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 7: Tahmini Tasarruf (dry-run simülasyon) -->
+                            <DataGridTemplateColumn Width="140"
+                                                     CanUserSort="True" SortMemberPath="EstimatedSavedBytes">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnEstimated}" />
+                                </DataGridTemplateColumn.Header>
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding EstimatedSavingsText}"
+                                                   ToolTip="{DynamicResource ColumnEstimatedToolTip}"
+                                                   FontSize="11"
+                                                   FontWeight="SemiBold"
+                                                   Foreground="#B48EF8"
+                                                   TextAlignment="Right"
+                                                   HorizontalAlignment="Right"
+                                                   VerticalAlignment="Center"
+                                                   Margin="0,0,10,0" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+
+                            <!-- Column 8: Durum -->
+                            <DataGridTemplateColumn Width="120"
+                                                     CanUserSort="True" SortMemberPath="Status">
+                                <DataGridTemplateColumn.Header>
+                                    <TextBlock Text="{DynamicResource ColumnStatus}" />
+                                </DataGridTemplateColumn.Header>
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border CornerRadius="3" Padding="8,2" HorizontalAlignment="Left" VerticalAlignment="Center">
@@ -928,15 +991,26 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="📋 İşlem Günlüğü" FontWeight="SemiBold" FontSize="12" Foreground="#DDDDDD" />
+                            <TextBlock Text="{DynamicResource ActivityLogTitle}" FontWeight="SemiBold" FontSize="12" Foreground="#DDDDDD" />
                             <Border Background="#2D2D30" CornerRadius="10" Padding="8,2" Margin="8,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding ActivityLogs.Count, StringFormat='{}{0} kayıt'}" FontSize="10" Foreground="#00BCF8" FontWeight="Bold" />
+                                <!-- Sayaç rozeti: "{0} kayıt" StringFormat'ı yerelleştirilemediğinden
+                                     (Binding.StringFormat sabittir) Run kompozisyonu kurulur. -->
+                                <TextBlock FontSize="10" Foreground="#00BCF8" FontWeight="Bold">
+                                    <Run Text="{Binding ActivityLogs.Count, Mode=OneWay}" /><Run Text="{DynamicResource RecordsCountSuffix}" />
+                                </TextBlock>
                             </Border>
                         </StackPanel>
-                        <Button Grid.Column="1" Content="Günlüğü Temizle"
-                                Command="{Binding ClearActivityLogsCommand}"
-                                Style="{StaticResource FilterSmallButtonStyle}"
-                                FontSize="11" Padding="8,2" Margin="0,0,8,0" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal">
+                            <Button Content="{DynamicResource LogsExportButton}"
+                                    Command="{Binding ExportActivityLogsCommand}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
+                                    FontSize="11" Padding="8,2" Margin="0,0,8,0"
+                                    ToolTip="{DynamicResource LogsExportToolTip}" />
+                            <Button Content="{DynamicResource LogsClearButton}"
+                                    Command="{Binding ClearActivityLogsCommand}"
+                                    Style="{StaticResource FilterSmallButtonStyle}"
+                                    FontSize="11" Padding="8,2" />
+                        </StackPanel>
                     </Grid>
                 </Expander.Header>
                 <Border Background="#121214" BorderBrush="#26262A" BorderThickness="0,1,0,0" Height="130" Padding="8">
@@ -951,7 +1025,22 @@
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding}" Foreground="#8CE99A" Margin="0,1" />
+                                <TextBlock Text="{Binding DisplayText}" Margin="0,1"
+                                           FontFamily="Cascadia Code, Consolas, Courier New, monospace">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Setter Property="Foreground" Value="#8CE99A" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Level}" Value="Warning">
+                                                    <Setter Property="Foreground" Value="#F5A623" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Level}" Value="Error">
+                                                    <Setter Property="Foreground" Value="#FF6B6B" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -990,12 +1079,12 @@
                             </Grid.ColumnDefinitions>
 
                             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="Depolama Metrikleri:" Foreground="#888888" FontSize="12" />
-                                <TextBlock Text="Orijinal: " Foreground="#AAAAAA" FontSize="12" Margin="8,0,0,0" />
+                                <TextBlock Text="{DynamicResource StorageMetricsLabel}" Foreground="#888888" FontSize="12" />
+                                <TextBlock Text="{DynamicResource StorageOriginalLabel}" Foreground="#AAAAAA" FontSize="12" Margin="8,0,0,0" />
                                 <TextBlock Text="{Binding TotalUncompressedBytes, Converter={StaticResource ByteSizeConv}}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12" />
-                                <TextBlock Text="  ➜  Diskteki: " Foreground="#AAAAAA" FontSize="12" Margin="6,0,0,0" />
+                                <TextBlock Text="{DynamicResource StorageOnDiskLabel}" Foreground="#AAAAAA" FontSize="12" Margin="6,0,0,0" />
                                 <TextBlock Text="{Binding TotalCompressedBytes, Converter={StaticResource ByteSizeConv}}" FontWeight="Bold" Foreground="#00BCF8" FontSize="12" />
-                                <TextBlock Text="  ➜  Kazanılan: " Foreground="#AAAAAA" FontSize="12" Margin="6,0,0,0" />
+                                <TextBlock Text="{DynamicResource StorageSavedLabel}" Foreground="#AAAAAA" FontSize="12" Margin="6,0,0,0" />
                                 <TextBlock Text="{Binding TotalSavedBytes, Converter={StaticResource ByteSizeConv}}" FontWeight="Bold" Foreground="#2ECC71" FontSize="12" />
                             </StackPanel>
 
@@ -1016,10 +1105,10 @@
                                 </Grid.ColumnDefinitions>
                                 <!-- Disk Usage Segment (Blue) -->
                                 <Border Grid.Column="0" Background="#0078D4"
-                                        ToolTip="Diskte kaplanan boyut" />
+                                        ToolTip="{DynamicResource DiskUsageToolTip}" />
                                 <!-- Reclaimed Savings Segment (Green) -->
                                 <Border Grid.Column="1" Background="#2ECC71"
-                                        ToolTip="Geri kazanılan tasarruf alanı" />
+                                        ToolTip="{DynamicResource SavedSpaceToolTip}" />
                             </Grid>
                         </Border>
                     </Grid>
@@ -1039,22 +1128,22 @@
                     <!-- Left Stats -->
                     <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,20,0">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock Text="Taranan: " Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{DynamicResource StatsScannedPrefix}" Foreground="#888888" FontSize="12" />
                             <TextBlock Text="{Binding TotalFilesFound}" FontWeight="Bold" Foreground="#FFFFFF" FontSize="12" />
-                            <TextBlock Text=" dosya (" Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{DynamicResource StatsFilesInfix}" Foreground="#888888" FontSize="12" />
                             <TextBlock Text="{Binding TotalBytesFound, Converter={StaticResource ByteSizeConv}}" Foreground="#FFFFFF" FontSize="12" />
-                            <TextBlock Text=")  |  Seçili: " Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{DynamicResource StatsSelectedInfix}" Foreground="#888888" FontSize="12" />
                             <TextBlock Text="{Binding SelectedFilesCount}" FontWeight="Bold" Foreground="#00BCF8" FontSize="12" />
-                            <TextBlock Text=" dosya (" Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{DynamicResource StatsFilesInfix}" Foreground="#888888" FontSize="12" />
                             <TextBlock Text="{Binding SelectedFilesTotalSize, Converter={StaticResource ByteSizeConv}}" Foreground="#00BCF8" FontSize="12" />
-                            <TextBlock Text=")" Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{DynamicResource StatsCloseParen}" Foreground="#888888" FontSize="12" />
                         </StackPanel>
 
                         <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                            <TextBlock Text="Kazanılan Alan: " Foreground="#888888" FontSize="12" />
+                            <TextBlock Text="{DynamicResource StatsSavedLabel}" Foreground="#888888" FontSize="12" />
                             <TextBlock Text="{Binding TotalBytesSaved, Converter={StaticResource ByteSizeConv}}"
                                        FontWeight="Bold" Foreground="#2ECC71" FontSize="13" />
-                            <TextBlock Text="  •  Durum: " Foreground="#888888" FontSize="12" Margin="10,0,0,0" />
+                            <TextBlock Text="{DynamicResource StatsStatusLabel}" Foreground="#888888" FontSize="12" Margin="10,0,0,0" />
                             <TextBlock Text="{Binding StatusMessage}" Foreground="#CCCCCC" FontSize="12" />
                         </StackPanel>
                     </StackPanel>
@@ -1068,6 +1157,7 @@
 
                         <ProgressBar Grid.Row="0" Height="8" Minimum="0" Maximum="100"
                                      Value="{Binding ProgressPercentage}"
+                                     IsIndeterminate="{Binding IsScanning}"
                                      Foreground="{StaticResource AccentBrush}"
                                      Background="#202022" BorderThickness="0" />
 
@@ -1079,25 +1169,46 @@
 
                     <!-- Right Action Buttons -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Faz 5.4: Undo last operation -->
+                        <Button Content="{DynamicResource RestoreLastOperationButton}"
+                                Command="{Binding RestoreLastOperationCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,0"
+                                ToolTip="{DynamicResource RestoreLastOperationToolTip}" />
+
+                        <!-- Faz 5.1: Weekly scheduled task -->
+                        <Button Content="{DynamicResource ScheduleWeeklyButton}"
+                                Command="{Binding ScheduleWeeklyTaskCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,0"
+                                ToolTip="{DynamicResource ScheduleWeeklyToolTip}" />
+
                         <!-- Cancel Button (Visible when busy) -->
-                        <Button Content="✕ İptal"
+                        <Button Content="{DynamicResource CancelButton}"
                                 Command="{Binding CancelCommand}"
                                 Style="{StaticResource DangerButtonStyle}"
                                 Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisConv}}"
                                 Margin="0,0,8,0" />
 
+                        <!-- Simulate (Dry-Run Estimates) Button -->
+                        <Button Content="{DynamicResource SimulateButton}"
+                                Command="{Binding SimulateSelectedCommand}"
+                                Style="{StaticResource SecondaryButtonStyle}"
+                                Margin="0,0,8,0"
+                                ToolTip="{DynamicResource SimulateToolTip}" />
+
                         <!-- Decompress Selected Button -->
-                        <Button Content="📂 Sıkıştırmayı Kaldır"
+                        <Button Content="{DynamicResource DecompressButton}"
                                 Command="{Binding DecompressSelectedCommand}"
                                 Style="{StaticResource SecondaryButtonStyle}"
                                 Margin="0,0,8,0"
-                                ToolTip="Seçili dosyaları sıkıştırılmamış orijinal durumlarına döndürür." />
+                                ToolTip="{DynamicResource DecompressToolTip}" />
 
                         <!-- Compress Selected Button (Main Accent) -->
-                        <Button Content="⚡ Seçilenleri Sıkıştır"
+                        <Button Content="{DynamicResource CompressButton}"
                                 Command="{Binding CompressSelectedCommand}"
                                 Style="{StaticResource AccentButtonStyle}"
-                                ToolTip="Seçili dosyaları seçilen algoritma ile sıkıştırır." />
+                                ToolTip="{DynamicResource CompressToolTip}" />
                     </StackPanel>
                 </Grid>
             </Grid>

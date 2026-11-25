@@ -6,10 +6,24 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
+    <AssemblyName>WinCompressor</AssemblyName>
     <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+
+    <!-- 4.2 Sürüm yönetimi: XAML'deki sürüm etiketi bu değerden üretilir. -->
+    <Version>2.1.0</Version>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
+    <InformationalVersion>2.1.0</InformationalVersion>
+    <Product>WinCompressor</Product>
+    <Description>Windows yerel sıkıştırma yöneticisi (NTFS LZNT1 &amp; CompactOS WOF)</Description>
+
+    <!-- 4.4 UAC: uygulama standart kullanıcı olarak başlar; yönetici altına
+         yalnızca kullanıcı isteğiyle (ProcessStartInfo "runas") yeniden
+         başlatılır. -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
 
 </Project>

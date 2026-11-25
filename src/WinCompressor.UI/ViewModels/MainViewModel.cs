@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Windows;
@@ -12,32 +11,32 @@ using WinCompressor.UI.Converters;
 
 namespace WinCompressor.UI.ViewModels;
 
-public class MainViewModel : ViewModelBase
+/// <summary>
+/// Ana görünüm modeli — fazlalık önlemek için konu bazlı partial dosyalara bölünmüştür:
+/// Scan (tarama/akış), Compression (sıkıştırma işlemleri), Filtering (arama/kategori),
+/// FileItemCommands (dosya başına komutlar), Activity (günlük), Settings (kalıcılık).
+/// Public API tüm testlerde koruma altındadır.
+/// </summary>
+public partial class MainViewModel : ViewModelBase
 {
     private readonly IFileScannerService _fileScanner;
     private readonly ICompressionService _compressionService;
     private readonly IAdminService _adminService;
-
-    private static readonly HashSet<string> ExecutableExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".exe", ".dll", ".sys", ".ocx"
-    };
-
-    private static readonly HashSet<string> TextCodeExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".txt", ".log", ".json", ".xml", ".csv", ".cs", ".js", ".ts", ".py", ".cpp", ".h", ".html", ".css"
-    };
-
-    private static readonly HashSet<string> DataMediaExtensions = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ".dat", ".bin", ".pak", ".assets", ".vmdk", ".iso", ".db", ".sqlite"
-    };
+    private readonly ISavingsEstimationService _estimationService;
+    private readonly ISettingsService? _settingsService;
+    private readonly ICompressionHistoryService? _historyService;
+    private readonly IGameLibraryService? _gameLibraryService;
+    private readonly IScheduledTaskService? _scheduledTaskService;
 
     public const long LargeFileThreshold = 50L * 1024L * 1024L; // 50 MB
+
+    /// <summary>Adaptive compression parallelism (clamped to 2..8).</summary>
+    private static readonly int CompressionParallelism = Math.Clamp(Environment.ProcessorCount, 2, 8);
 
     private string _selectedPath = string.Empty;
     private bool _includeSubdirectories = true;
     private bool _onlyUncompressed = true;
+    private bool _includeAppData;
     private bool _isScanning;
     private bool _isCompressing;
     private string _statusMessage = "Hazır";
@@ -65,24 +64,61 @@ public class MainViewModel : ViewModelBase
 
     private CancellationTokenSource? _activeCts;
     private bool _isUpdatingSelectionAll;
+    private bool _isSyncingAlgorithmSelection;
+    private int _filteredFilesCount;
+    private bool _canRestoreLastOperation;
+
+    /// <summary>Deduplication for streaming scan result batches (case-insensitive paths).</summary>
+    private readonly HashSet<string> _scannedPaths = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// UI sürüm etiketi (ör. "v2.1 GUI Pro") — csproj'taki AssemblyVersion'dan
+    /// türetilir; XAML'de tek kaynak olarak bu bağlanır.
+    /// </summary>
+    public string AppVersionText { get; }
 
     public Func<string?>? FolderPicker { get; set; }
     public Action<string>? OpenFileLocationHandler { get; set; }
     public Action<string>? ClipboardHandler { get; set; }
+    public Func<string?>? ExportLogsPathPicker { get; set; }
+
+    /// <summary>
+    /// Test seam for opening files; when null the shell open is attempted directly.
+    /// </summary>
+    public Action<string>? OpenFileHandler { get; set; }
 
     public MainViewModel()
-        : this(new FileScannerService(), new CompressionService(), new AdminService())
+        : this(
+            new FileScannerService(new AlgorithmDetectionService()),
+            new CompressionService(),
+            new AdminService(),
+            new SavingsEstimationService())
     {
     }
 
     public MainViewModel(
         IFileScannerService fileScanner,
         ICompressionService compressionService,
-        IAdminService adminService)
+        IAdminService adminService,
+        ISavingsEstimationService? estimationService = null,
+        ISettingsService? settingsService = null,
+        ICompressionHistoryService? historyService = null,
+        IGameLibraryService? gameLibraryService = null,
+        IScheduledTaskService? scheduledTaskService = null)
     {
         _fileScanner = fileScanner ?? throw new ArgumentNullException(nameof(fileScanner));
         _compressionService = compressionService ?? throw new ArgumentNullException(nameof(compressionService));
         _adminService = adminService ?? throw new ArgumentNullException(nameof(adminService));
+        _estimationService = estimationService ?? new SavingsEstimationService();
+        _settingsService = settingsService;
+        _historyService = historyService;
+        _gameLibraryService = gameLibraryService;
+        _scheduledTaskService = scheduledTaskService;
+
+        var assemblyVersion = typeof(MainViewModel).Assembly.GetName().Version;
+        AppVersionText = assemblyVersion is null
+            ? "GUI Pro"
+            : $"v{assemblyVersion.Major}.{assemblyVersion.Minor} GUI Pro";
 
         Files = new ObservableCollection<FileItemViewModel>();
         FilesView = CollectionViewSource.GetDefaultView(Files);
@@ -91,7 +127,8 @@ public class MainViewModel : ViewModelBase
         FilesView.SortDescriptions.Add(new SortDescription(nameof(FileItemViewModel.Size), ListSortDirection.Descending));
 
         AlgorithmOptions = new ObservableCollection<AlgorithmOptionViewModel>();
-        ActivityLogs = new ObservableCollection<string>();
+        ActivityLogs = new ObservableCollection<ActivityLogEntry>();
+        GameLibraries = new ObservableCollection<GameLibraryInfo>();
 
         _isAdministrator = _adminService.IsAdministrator();
         _selectedAlgorithm = _isAdministrator ? CompressionAlgorithm.Lzx : CompressionAlgorithm.Ntfs;
@@ -101,37 +138,29 @@ public class MainViewModel : ViewModelBase
 
         InitializeAlgorithmOptions();
         InitializeCommands();
+
+        // Persistence: restore the last session's preferences when a settings
+        // service is provided (the parameterless ctor intentionally stays clean
+        // for tests).
+        if (_settingsService is not null)
+        {
+            ApplyLoadedSettings(_settingsService.Load());
+        }
+
+        // Faz 5: kurulu oyun kütüphaneleri + geri alınabilir işlem durumu.
+        LoadGameLibraries();
+        RefreshRestoreCapability();
+
         LogActivity("WinCompressor başlatıldı. Sistem hazır.");
     }
 
     public ICollectionView FilesView { get; }
     public ObservableCollection<FileItemViewModel> Files { get; }
     public ObservableCollection<AlgorithmOptionViewModel> AlgorithmOptions { get; }
-    public ObservableCollection<string> ActivityLogs { get; }
+    public ObservableCollection<ActivityLogEntry> ActivityLogs { get; }
 
-    public string SelectedPath
-    {
-        get => _selectedPath;
-        set
-        {
-            if (SetProperty(ref _selectedPath, value))
-            {
-                (ScanCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    public bool IncludeSubdirectories
-    {
-        get => _includeSubdirectories;
-        set => SetProperty(ref _includeSubdirectories, value);
-    }
-
-    public bool OnlyUncompressed
-    {
-        get => _onlyUncompressed;
-        set => SetProperty(ref _onlyUncompressed, value);
-    }
+    /// <summary>Kurulu oyun kütüphaneleri (Steam/Epic/...); boşsa butonlar görünmez.</summary>
+    public ObservableCollection<GameLibraryInfo> GameLibraries { get; }
 
     public bool IsScanning
     {
@@ -218,8 +247,21 @@ public class MainViewModel : ViewModelBase
     public CompressionAlgorithm SelectedAlgorithm
     {
         get => _selectedAlgorithm;
-        set => SetProperty(ref _selectedAlgorithm, value);
+        set
+        {
+            if (SetProperty(ref _selectedAlgorithm, value))
+            {
+                OnPropertyChanged(nameof(CanUseSelectedAlgorithm));
+                SyncAlgorithmOptionSelection(value);
+            }
+        }
     }
+
+    /// <summary>
+    /// True when the current user may compress with the selected algorithm.
+    /// CompactOS WOF algorithms (LZX / XPRESS) require administrator privileges.
+    /// </summary>
+    public bool CanUseSelectedAlgorithm => !SelectedAlgorithm.RequiresAdmin() || _isAdministrator;
 
     public bool IsAdministrator
     {
@@ -255,45 +297,6 @@ public class MainViewModel : ViewModelBase
                 SetAllItemsSelection(value.Value);
             }
         }
-    }
-
-    public string SearchText
-    {
-        get => _searchText;
-        set
-        {
-            if (SetProperty(ref _searchText, value))
-            {
-                ApplyFilter();
-                (ClearSearchCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    public FileCategory SelectedCategory
-    {
-        get => _selectedCategory;
-        set
-        {
-            if (SetProperty(ref _selectedCategory, value))
-            {
-                ApplyFilter();
-            }
-        }
-    }
-
-    public int FilteredFilesCount => FilesView?.Cast<object>().Count() ?? Files.Count;
-
-    public string FilterCountText => Files.Count == FilteredFilesCount
-        ? $"{Files.Count} dosya"
-        : $"{FilteredFilesCount} / {Files.Count} dosya";
-
-    public bool IsFilterActive => !string.IsNullOrWhiteSpace(SearchText) || SelectedCategory != FileCategory.All;
-
-    public bool IsActivityLogVisible
-    {
-        get => _isActivityLogVisible;
-        set => SetProperty(ref _isActivityLogVisible, value);
     }
 
     public long TotalUncompressedBytes
@@ -334,6 +337,7 @@ public class MainViewModel : ViewModelBase
     public ICommand CancelCommand { get; private set; } = null!;
     public ICommand CompressSelectedCommand { get; private set; } = null!;
     public ICommand DecompressSelectedCommand { get; private set; } = null!;
+    public ICommand SimulateSelectedCommand { get; private set; } = null!;
     public ICommand SelectAllCommand { get; private set; } = null!;
     public ICommand DeselectAllCommand { get; private set; } = null!;
     public ICommand InvertSelectionCommand { get; private set; } = null!;
@@ -342,150 +346,36 @@ public class MainViewModel : ViewModelBase
     public ICommand SelectCategoryCommand { get; private set; } = null!;
     public ICommand ToggleActivityLogCommand { get; private set; } = null!;
     public ICommand ClearActivityLogsCommand { get; private set; } = null!;
+    public ICommand ExportActivityLogsCommand { get; private set; } = null!;
     public ICommand RestartAsAdminCommand { get; private set; } = null!;
 
     public ICommand OpenFileLocationCommand { get; private set; } = null!;
+    public ICommand OpenFileCommand { get; private set; } = null!;
     public ICommand CopyPathCommand { get; private set; } = null!;
     public ICommand CompressSingleFileCommand { get; private set; } = null!;
     public ICommand DecompressSingleFileCommand { get; private set; } = null!;
     public ICommand ExcludeFromListCommand { get; private set; } = null!;
 
-    public void LogActivity(string message)
+    /// <summary>Faz 5.4: sıkıştırma sonrası tek tuşla eski haline döndürme.</summary>
+    public ICommand RestoreLastOperationCommand { get; private set; } = null!;
+
+    /// <summary>Faz 5.1: seçili klasör için haftalık sıkıştırma görevi oluşturma.</summary>
+    public ICommand ScheduleWeeklyTaskCommand { get; private set; } = null!;
+
+    /// <summary>Faz 5.5: oyun kütüphanesi klasörünü tarama yolu olarak seçme.</summary>
+    public ICommand SelectGameLibraryCommand { get; private set; } = null!;
+
+    /// <summary>Son batch geri alınabilir mi (geçmiş servis yoksa her zaman false).</summary>
+    public bool CanRestoreLastOperation
     {
-        if (string.IsNullOrWhiteSpace(message))
-            return;
-
-        var logEntry = $"[{DateTime.Now:HH:mm:ss}] {message}";
-        ActivityLogs.Add(logEntry);
-    }
-
-    public void SetCategory(FileCategory category) => SelectedCategory = category;
-
-    public void SetCategory(string category)
-    {
-        if (Enum.TryParse<FileCategory>(category, true, out var parsed))
+        get => _canRestoreLastOperation;
+        private set
         {
-            SelectedCategory = parsed;
-        }
-    }
-
-    public void HandleDroppedPath(string? path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return;
-
-        if (Directory.Exists(path))
-        {
-            SelectedPath = path;
-            LogActivity($"Sürükle-bırak ile klasör seçildi: {path}");
-            StatusMessage = $"Klasör seçildi: {path}";
-            CurrentActionText = $"Taramak için 'TARA' butonuna tıklayın: {path}";
-        }
-        else if (File.Exists(path))
-        {
-            var dir = Path.GetDirectoryName(path);
-            if (!string.IsNullOrEmpty(dir) && Directory.Exists(dir))
+            if (SetProperty(ref _canRestoreLastOperation, value))
             {
-                SelectedPath = dir;
-                LogActivity($"Sürükle-bırak ile dosyanın klasörü seçildi: {dir}");
-                StatusMessage = $"Klasör seçildi: {dir}";
-                CurrentActionText = $"Taramak için 'TARA' butonuna tıklayın: {dir}";
+                RaiseCommandStatesChanged();
             }
         }
-    }
-
-    public bool FilterFileItem(object itemObj)
-    {
-        if (itemObj is not FileItemViewModel item)
-            return false;
-
-        if (!MatchesCategory(item, SelectedCategory))
-            return false;
-
-        if (!string.IsNullOrWhiteSpace(_searchText))
-        {
-            var query = _searchText.Trim();
-            bool matchName = item.FileName?.Contains(query, StringComparison.OrdinalIgnoreCase) == true;
-            bool matchExt = item.Extension?.Contains(query, StringComparison.OrdinalIgnoreCase) == true;
-            bool matchPath = item.FilePath?.Contains(query, StringComparison.OrdinalIgnoreCase) == true;
-
-            if (!matchName && !matchExt && !matchPath)
-                return false;
-        }
-
-        return true;
-    }
-
-    public static bool MatchesCategory(FileItemViewModel item, FileCategory category)
-    {
-        return category switch
-        {
-            FileCategory.All => true,
-            FileCategory.Executables => IsExecutable(item.Extension),
-            FileCategory.LargeFiles => item.Size >= LargeFileThreshold,
-            FileCategory.TextCode => IsTextCode(item.Extension),
-            FileCategory.DataMedia => IsDataMedia(item.Extension),
-            _ => true
-        };
-    }
-
-    private static string NormalizeExtension(string? ext)
-    {
-        if (string.IsNullOrWhiteSpace(ext))
-            return string.Empty;
-        return ext.StartsWith('.') ? ext : "." + ext;
-    }
-
-    public static bool IsExecutable(string? ext) =>
-        ExecutableExtensions.Contains(NormalizeExtension(ext));
-
-    public static bool IsTextCode(string? ext) =>
-        TextCodeExtensions.Contains(NormalizeExtension(ext));
-
-    public static bool IsDataMedia(string? ext) =>
-        DataMediaExtensions.Contains(NormalizeExtension(ext));
-
-    public void ApplyFilter()
-    {
-        FilesView.Refresh();
-        OnPropertyChanged(nameof(FilteredFilesCount));
-        OnPropertyChanged(nameof(FilterCountText));
-        OnPropertyChanged(nameof(IsFilterActive));
-    }
-
-    private void InitializeAlgorithmOptions()
-    {
-        AlgorithmOptions.Clear();
-
-        AlgorithmOptions.Add(new AlgorithmOptionViewModel
-        {
-            Algorithm = CompressionAlgorithm.Lzx,
-            Name = "LZX (CompactOS)",
-            Subtitle = "Maksimum Tasarruf (Önerilen) | %40-%70 Kazanç",
-            Description = "Oyunlar ve Programlar için ideal en yüksek sıkıştırma oranı.",
-            RequiresAdmin = true,
-            IsRecommended = true
-        });
-
-        AlgorithmOptions.Add(new AlgorithmOptionViewModel
-        {
-            Algorithm = CompressionAlgorithm.Xpress8K,
-            Name = "XPRESS 8K",
-            Subtitle = "Dengeli | Hızlı sıkıştırma ve açma",
-            Description = "Hafif CPU kullanımı ile hızlı erişim gerektiren dosyalar için dengeli profil.",
-            RequiresAdmin = true,
-            IsRecommended = false
-        });
-
-        AlgorithmOptions.Add(new AlgorithmOptionViewModel
-        {
-            Algorithm = CompressionAlgorithm.Ntfs,
-            Name = "NTFS (LZNT1)",
-            Subtitle = "Klasik NTFS | Standart kullanıcı hakları",
-            Description = "Geleneksel Windows dosya sistemi sıkıştırması. Yönetici yetkisi gerektirmez.",
-            RequiresAdmin = false,
-            IsRecommended = false
-        });
     }
 
     private void InitializeCommands()
@@ -496,6 +386,7 @@ public class MainViewModel : ViewModelBase
         CancelCommand = new RelayCommand(ExecuteCancel, () => IsBusy);
         CompressSelectedCommand = new AsyncRelayCommand(ExecuteCompressSelectedAsync, () => !IsBusy && SelectedFilesCount > 0);
         DecompressSelectedCommand = new AsyncRelayCommand(ExecuteDecompressSelectedAsync, () => !IsBusy && SelectedFilesCount > 0);
+        SimulateSelectedCommand = new AsyncRelayCommand(ExecuteSimulateSelectedAsync, () => !IsBusy && SelectedFilesCount > 0);
         SelectAllCommand = new RelayCommand(() => SetAllItemsSelection(true), () => !IsBusy && Files.Count > 0);
         DeselectAllCommand = new RelayCommand(() => SetAllItemsSelection(false), () => !IsBusy && Files.Count > 0);
         InvertSelectionCommand = new RelayCommand(ExecuteInvertSelection, () => !IsBusy && Files.Count > 0);
@@ -504,546 +395,136 @@ public class MainViewModel : ViewModelBase
         SelectCategoryCommand = new RelayCommand<object>(ExecuteSelectCategory);
         ToggleActivityLogCommand = new RelayCommand(() => IsActivityLogVisible = !IsActivityLogVisible);
         ClearActivityLogsCommand = new RelayCommand(() => ActivityLogs.Clear());
+        ExportActivityLogsCommand = new RelayCommand(ExecuteExportActivityLogs, () => ActivityLogs.Count > 0);
         RestartAsAdminCommand = new RelayCommand(ExecuteRestartAsAdmin);
 
         OpenFileLocationCommand = new RelayCommand<FileItemViewModel>(ExecuteOpenFileLocation);
+        OpenFileCommand = new RelayCommand<FileItemViewModel>(ExecuteOpenFile, item => item != null);
         CopyPathCommand = new RelayCommand<FileItemViewModel>(ExecuteCopyPath);
         CompressSingleFileCommand = new AsyncRelayCommand<FileItemViewModel>(ExecuteCompressSingleFileAsync, item => !IsBusy && item != null);
         DecompressSingleFileCommand = new AsyncRelayCommand<FileItemViewModel>(ExecuteDecompressSingleFileAsync, item => !IsBusy && item != null);
         ExcludeFromListCommand = new RelayCommand<FileItemViewModel>(ExecuteExcludeFromList, item => !IsBusy && item != null);
+
+        RestoreLastOperationCommand = new AsyncRelayCommand(
+            ExecuteRestoreLastOperationAsync, () => !IsBusy && CanRestoreLastOperation);
+        ScheduleWeeklyTaskCommand = new RelayCommand(ExecuteScheduleWeeklyTask, () => !IsBusy && !string.IsNullOrWhiteSpace(SelectedPath));
+        SelectGameLibraryCommand = new RelayCommand<string>(ExecuteSelectGameLibrary);
     }
 
-    private void ExecuteSelectCategory(object? param)
+    private void InitializeAlgorithmOptions()
     {
-        if (param is FileCategory cat)
+        AlgorithmOptions.Clear();
+
+        AddAlgorithmOption(new AlgorithmOptionViewModel
         {
-            SelectedCategory = cat;
-        }
-        else if (param is string catStr && Enum.TryParse<FileCategory>(catStr, true, out var parsed))
+            Algorithm = CompressionAlgorithm.Lzx,
+            Name = "LZX (CompactOS)",
+            Subtitle = "Maksimum Tasarruf | %40-%70 Kazanç",
+            Description = "Oyunlar, programlar ve arşiv dosyaları için ideal en yüksek sıkıştırma oranı.",
+            SubtitleColor = "#00BCF8",
+            RequiresAdmin = true,
+            IsRecommended = true
+        });
+
+        AddAlgorithmOption(new AlgorithmOptionViewModel
         {
-            SelectedCategory = parsed;
-        }
+            Algorithm = CompressionAlgorithm.Xpress4K,
+            Name = "XPRESS 4K",
+            Subtitle = "En Hızlı | Minimum CPU",
+            Description = "En düşük CPU yükü ile en hızlı erişim gereken dosyalar için.",
+            SubtitleColor = "#F39C12",
+            RequiresAdmin = true,
+            IsRecommended = false
+        });
+
+        AddAlgorithmOption(new AlgorithmOptionViewModel
+        {
+            Algorithm = CompressionAlgorithm.Xpress8K,
+            Name = "XPRESS 8K",
+            Subtitle = "Dengeli | Hızlı sıkıştırma ve açma",
+            Description = "Hafif CPU kullanımı ile hızlı erişim gerektiren dosyalar için dengeli profil.",
+            SubtitleColor = "#F39C12",
+            RequiresAdmin = true,
+            IsRecommended = false
+        });
+
+        AddAlgorithmOption(new AlgorithmOptionViewModel
+        {
+            Algorithm = CompressionAlgorithm.Xpress16K,
+            Name = "XPRESS 16K",
+            Subtitle = "Yüksek Oran | Dengeli hız",
+            Description = "XPRESS ailesinin en yüksek oranına sahip üyesi; 4K/8K'dan daha iyi sıkıştırır.",
+            SubtitleColor = "#F39C12",
+            RequiresAdmin = true,
+            IsRecommended = false
+        });
+
+        AddAlgorithmOption(new AlgorithmOptionViewModel
+        {
+            Algorithm = CompressionAlgorithm.Ntfs,
+            Name = "NTFS (LZNT1)",
+            Subtitle = "Klasik NTFS | Standart kullanıcı hakları",
+            Description = "Geleneksel Windows dosya sistemi sıkıştırması. Yönetici yetkisi gerektirmez.",
+            SubtitleColor = "#AAAAAA",
+            RequiresAdmin = false,
+            IsRecommended = false
+        });
+
+        SyncAlgorithmOptionSelection(_selectedAlgorithm);
     }
 
-    private void ExecuteOpenFileLocation(FileItemViewModel? item)
+    private void AddAlgorithmOption(AlgorithmOptionViewModel option)
     {
-        if (item == null || string.IsNullOrWhiteSpace(item.FilePath))
-            return;
+        // Admin-only algorithms are disabled for standard users so the card
+        // cannot even be picked, instead of failing per-file at compact.exe time.
+        option.IsEnabled = !option.RequiresAdmin || _isAdministrator;
 
-        if (OpenFileLocationHandler != null)
+        option.PropertyChanged += (sender, e) =>
         {
-            OpenFileLocationHandler(item.FilePath);
-            LogActivity($"Dosya konumu açıldı: {item.FileName}");
-            return;
-        }
-
-        try
-        {
-            if (File.Exists(item.FilePath))
+            if (e.PropertyName == nameof(AlgorithmOptionViewModel.IsSelected) &&
+                !_isSyncingAlgorithmSelection &&
+                sender is AlgorithmOptionViewModel { IsSelected: true } selected)
             {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "explorer.exe",
-                    Arguments = $"/select,\"{item.FilePath}\"",
-                    UseShellExecute = true
-                });
-                LogActivity($"Dosya konumu açıldı: {item.FileName}");
+                SelectedAlgorithm = selected.Algorithm;
             }
-        }
-        catch (Exception ex)
-        {
-            LogActivity($"Dosya konumu açılamadı: {ex.Message}");
-        }
-    }
-
-    private void ExecuteCopyPath(FileItemViewModel? item)
-    {
-        if (item == null || string.IsNullOrWhiteSpace(item.FilePath))
-            return;
-
-        if (ClipboardHandler != null)
-        {
-            ClipboardHandler(item.FilePath);
-        }
-        else
-        {
-            try
-            {
-                Clipboard.SetText(item.FilePath);
-            }
-            catch (Exception ex)
-            {
-                LogActivity($"Panoya kopyalanamadı: {ex.Message}");
-                return;
-            }
-        }
-
-        LogActivity($"Dosya yolu kopyalandı: {item.FilePath}");
-    }
-
-    public async Task ExecuteCompressSingleFileAsync(FileItemViewModel? item)
-    {
-        if (IsBusy || item == null)
-            return;
-
-        IsCompressing = true;
-        StatusMessage = $"{item.FileName} sıkıştırılıyor ({SelectedAlgorithm})...";
-        CurrentActionText = $"Sıkıştırılıyor: {item.FileName}";
-        LogActivity($"Tekil dosya sıkıştırma başlatıldı: {item.FileName} ({SelectedAlgorithm})");
-
-        try
-        {
-            bool success = await _compressionService.CompressFileAsync(item.Model, SelectedAlgorithm, CancellationToken.None);
-            item.Refresh();
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-
-            if (success)
-            {
-                StatusMessage = $"{item.FileName} başarıyla sıkıştırıldı.";
-                CurrentActionText = $"Tasarruf: {ByteSizeConverter.Format(item.BytesSaved)}.";
-                LogActivity($"Sıkıştırma tamamlandı: {item.FileName} ({ByteSizeConverter.Format(item.BytesSaved)} tasarruf)");
-            }
-            else
-            {
-                StatusMessage = $"{item.FileName} sıkıştırılamadı.";
-                LogActivity($"Sıkıştırma başarısız: {item.FileName} - {item.ErrorMessage ?? "Hata"}");
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Hata: {ex.Message}";
-            LogActivity($"Sıkıştırma hatası ({item.FileName}): {ex.Message}");
-        }
-        finally
-        {
-            IsCompressing = false;
-        }
-    }
-
-    public async Task ExecuteDecompressSingleFileAsync(FileItemViewModel? item)
-    {
-        if (IsBusy || item == null)
-            return;
-
-        IsCompressing = true;
-        StatusMessage = $"{item.FileName} sıkıştırması kaldırılıyor...";
-        CurrentActionText = $"Sıkıştırma kaldırılıyor: {item.FileName}";
-        LogActivity($"Tekil dosya sıkıştırma kaldırma: {item.FileName}");
-
-        try
-        {
-            bool success = await _compressionService.DecompressFileAsync(item.Model, CancellationToken.None);
-            item.Refresh();
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-
-            if (success)
-            {
-                StatusMessage = $"{item.FileName} orijinal boyutuna döndürüldü.";
-                CurrentActionText = "Sıkıştırma kaldırıldı.";
-                LogActivity($"Sıkıştırma kaldırıldı: {item.FileName}");
-            }
-            else
-            {
-                StatusMessage = $"{item.FileName} sıkıştırması kaldırılamadı.";
-                LogActivity($"Sıkıştırma kaldırma başarısız: {item.FileName} - {item.ErrorMessage ?? "Hata"}");
-            }
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Hata: {ex.Message}";
-            LogActivity($"Sıkıştırma kaldırma hatası ({item.FileName}): {ex.Message}");
-        }
-        finally
-        {
-            IsCompressing = false;
-        }
-    }
-
-    public void ExecuteExcludeFromList(FileItemViewModel? item)
-    {
-        if (item == null)
-            return;
-
-        if (Files.Remove(item))
-        {
-            TotalFilesFound = Files.Count;
-            TotalBytesFound = Files.Sum(f => f.Size);
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-            ApplyFilter();
-            LogActivity($"Dosya listeden çıkarıldı: {item.FileName}");
-            StatusMessage = $"{item.FileName} listeden çıkarıldı.";
-        }
-    }
-
-    public void ExecuteInvertSelection()
-    {
-        if (IsBusy || Files.Count == 0)
-            return;
-
-        _isUpdatingSelectionAll = true;
-        try
-        {
-            foreach (var file in Files)
-            {
-                file.IsSelected = !file.IsSelected;
-            }
-        }
-        finally
-        {
-            _isUpdatingSelectionAll = false;
-        }
-
-        UpdateSelectionMetrics();
-        LogActivity("Dosya seçimi tersine çevrildi.");
-    }
-
-    public void ExecuteSelectLargeFiles()
-    {
-        if (IsBusy || Files.Count == 0)
-            return;
-
-        _isUpdatingSelectionAll = true;
-        try
-        {
-            foreach (var file in Files)
-            {
-                file.IsSelected = file.Size >= LargeFileThreshold;
-            }
-        }
-        finally
-        {
-            _isUpdatingSelectionAll = false;
-        }
-
-        UpdateSelectionMetrics();
-        LogActivity($"Büyük dosyalar (>= 50 MB) seçildi: {SelectedFilesCount} dosya.");
-    }
-
-    private void ExecuteBrowseFolder()
-    {
-        if (FolderPicker != null)
-        {
-            var chosen = FolderPicker();
-            if (!string.IsNullOrWhiteSpace(chosen))
-            {
-                SelectedPath = chosen;
-            }
-            return;
-        }
-
-        var dialog = new Microsoft.Win32.OpenFolderDialog
-        {
-            Title = "Taranacak veya Sıkıştırılacak Klasörü Seçin",
-            InitialDirectory = Directory.Exists(SelectedPath) ? SelectedPath : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-            Multiselect = false
         };
 
-        if (dialog.ShowDialog() == true)
-        {
-            SelectedPath = dialog.FolderName;
-        }
+        AlgorithmOptions.Add(option);
     }
 
-    private void ExecuteQuickSelectDrive(string? driveParam)
+    /// <summary>
+    /// Keeps the algorithm card RadioButtons in sync with the selected algorithm
+    /// without triggering selection-changed feedback loops.
+    /// </summary>
+    private void SyncAlgorithmOptionSelection(CompressionAlgorithm selected)
     {
-        if (string.IsNullOrWhiteSpace(driveParam))
-            return;
-
-        if (driveParam.Equals("USER", StringComparison.OrdinalIgnoreCase))
-        {
-            SelectedPath = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        }
-        else
-        {
-            SelectedPath = driveParam;
-        }
-    }
-
-    public async Task ExecuteScanAsync()
-    {
-        if (IsBusy || string.IsNullOrWhiteSpace(SelectedPath))
-            return;
-
-        IsScanning = true;
-        StatusMessage = "Tarama başlatılıyor...";
-        CurrentActionText = $"Klasör taranıyor: {SelectedPath}";
-        ProgressPercentage = 0;
-        ProgressText = "Taranıyor...";
-        LogActivity($"Tarama başlatıldı: {SelectedPath} (Alt klasörler: {IncludeSubdirectories}, Sadece sıkıştırılmamış: {OnlyUncompressed})");
-
-        _activeCts = new CancellationTokenSource();
-        var token = _activeCts.Token;
-
-        var scanOptions = new ScanOptions
-        {
-            RootPath = SelectedPath,
-            IncludeSubdirectories = IncludeSubdirectories,
-            OnlyUncompressed = OnlyUncompressed
-        };
-
-        var progress = new Progress<ScanProgressReport>(report =>
-        {
-            StatusMessage = $"Taranıyor: {report.ScannedFilesCount} dosya, {report.MatchedFilesCount} uygun dosya bulundu";
-            CurrentActionText = string.IsNullOrWhiteSpace(report.CurrentDirectory)
-                ? "Dizinler taranıyor..."
-                : $"Taranan dizin: {report.CurrentDirectory}";
-        });
-
+        _isSyncingAlgorithmSelection = true;
         try
         {
-            var results = await _fileScanner.ScanAsync(scanOptions, progress, token);
-
-            Files.Clear();
-
-            var sortedList = results.OrderByDescending(f => f.Size).ToList();
-
-            foreach (var item in sortedList)
+            foreach (var option in AlgorithmOptions)
             {
-                var vm = new FileItemViewModel(item, OnItemSelectionChanged)
-                {
-                    IsSelected = !item.IsCompressed
-                };
-                Files.Add(vm);
+                option.IsSelected = option.Algorithm == selected;
             }
-
-            TotalFilesFound = Files.Count;
-            TotalBytesFound = Files.Sum(f => f.Size);
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-            ApplyFilter();
-
-            StatusMessage = $"Tarama tamamlandı: {TotalFilesFound} dosya bulundu ({ByteSizeConverter.Format(TotalBytesFound)}).";
-            CurrentActionText = $"Seçili {SelectedFilesCount} dosya ({ByteSizeConverter.Format(SelectedFilesTotalSize)}) sıkıştırma için hazır.";
-            ProgressPercentage = 100;
-            ProgressText = $"{TotalFilesFound} dosya";
-            LogActivity($"Tarama tamamlandı: {TotalFilesFound} dosya ({ByteSizeConverter.Format(TotalBytesFound)})");
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Tarama kullanıcı tarafından iptal edildi.";
-            CurrentActionText = "Tarama durduruldu.";
-            LogActivity("Tarama işlemi kullanıcı tarafından iptal edildi.");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Tarama hatası: {ex.Message}";
-            CurrentActionText = "Tarama sırasında bir hata oluştu.";
-            LogActivity($"Tarama hatası: {ex.Message}");
         }
         finally
         {
-            _activeCts?.Dispose();
-            _activeCts = null;
-            IsScanning = false;
+            _isSyncingAlgorithmSelection = false;
         }
     }
 
-    public async Task ExecuteCompressSelectedAsync()
-    {
-        if (IsBusy)
+    /// <summary>
+    /// T3-B1 test erişimi: üretimde MainWindow ile paylaşılan ayar servisi.
+    /// </summary>
+    public ISettingsService? SettingsService => _settingsService;
+
+    internal void OnItemSelectionChanged(FileItemViewModel? _ = null)    {
+        // T2-K3 (inceleme turu 2): toplu seçim işlemleri (tümünü seç, ters çevir,
+        // büyük dosyaları seç) ve tarama akışı sırasında her madde için tam liste
+        // metrik taraması yapılması O(n²) üretiyordu; bu yollar bayrakla
+        // bastırılır ve işlemin sonunda TEK güncelleme yapılır.
+        if (_isUpdatingSelectionAll)
             return;
 
-        var selectedItems = Files.Where(f => f.IsSelected).ToList();
-        if (selectedItems.Count == 0)
-        {
-            StatusMessage = "Lütfen sıkıştırılacak en az bir dosya seçin.";
-            return;
-        }
-
-        IsCompressing = true;
-        StatusMessage = $"{selectedItems.Count} dosya sıkıştırılıyor ({SelectedAlgorithm})...";
-        ProgressPercentage = 0;
-        ProgressText = $"0 / {selectedItems.Count}";
-        LogActivity($"Toplu sıkıştırma başlatıldı: {selectedItems.Count} dosya ({SelectedAlgorithm})");
-
-        _activeCts = new CancellationTokenSource();
-        var token = _activeCts.Token;
-
-        var fileMap = selectedItems.ToDictionary(k => k.FilePath, StringComparer.OrdinalIgnoreCase);
-
-        var progress = new Progress<CompressionProgressReport>(report =>
-        {
-            ProgressPercentage = report.PercentComplete;
-            ProgressText = $"{report.ProcessedFiles} / {report.TotalFiles} (%{report.PercentComplete:0.0})";
-            CurrentActionText = $"Sıkıştırılıyor: {Path.GetFileName(report.CurrentFilePath)} ({ByteSizeConverter.Format(report.TotalBytesSaved)} kazanıldı)";
-
-            if (!string.IsNullOrEmpty(report.CurrentFilePath) && fileMap.TryGetValue(report.CurrentFilePath, out var currentVm))
-            {
-                currentVm.Refresh();
-            }
-
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-        });
-
-        try
-        {
-            var targetModels = selectedItems.Select(vm => vm.Model).ToList();
-            var summary = await _compressionService.CompressFilesAsync(
-                targetModels,
-                SelectedAlgorithm,
-                maxDegreeOfParallelism: 4,
-                progress: progress,
-                cancellationToken: token);
-
-            foreach (var item in selectedItems)
-            {
-                item.Refresh();
-            }
-
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-
-            StatusMessage = $"Sıkıştırma tamamlandı: {summary.SuccessfulCount} başarılı, {summary.FailedCount} hata.";
-            CurrentActionText = $"İşlem bitti. Toplam tasarruf: {ByteSizeConverter.Format(summary.TotalBytesSaved)}.";
-            ProgressPercentage = 100;
-            LogActivity($"Toplu sıkıştırma bitti: {summary.SuccessfulCount} başarılı, {summary.FailedCount} hata. Toplam kazanç: {ByteSizeConverter.Format(summary.TotalBytesSaved)}");
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Sıkıştırma işlemi iptal edildi.";
-            CurrentActionText = "Kullanıcı işlemi durdurdu.";
-            foreach (var item in selectedItems)
-            {
-                item.Refresh();
-            }
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-            LogActivity("Sıkıştırma işlemi iptal edildi.");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Sıkıştırma hatası: {ex.Message}";
-            CurrentActionText = "Hata oluştu.";
-            LogActivity($"Sıkıştırma sırasında hata: {ex.Message}");
-        }
-        finally
-        {
-            _activeCts?.Dispose();
-            _activeCts = null;
-            IsCompressing = false;
-        }
-    }
-
-    public async Task ExecuteDecompressSelectedAsync()
-    {
-        if (IsBusy)
-            return;
-
-        var selectedItems = Files.Where(f => f.IsSelected).ToList();
-        if (selectedItems.Count == 0)
-        {
-            StatusMessage = "Lütfen sıkıştırması kaldırılacak en az bir dosya seçin.";
-            return;
-        }
-
-        IsCompressing = true;
-        StatusMessage = $"{selectedItems.Count} dosyanın sıkıştırması kaldırılıyor...";
-        ProgressPercentage = 0;
-        ProgressText = $"0 / {selectedItems.Count}";
-        LogActivity($"Sıkıştırma kaldırma başlatıldı: {selectedItems.Count} dosya");
-
-        _activeCts = new CancellationTokenSource();
-        var token = _activeCts.Token;
-
-        var fileMap = selectedItems.ToDictionary(k => k.FilePath, StringComparer.OrdinalIgnoreCase);
-
-        var progress = new Progress<CompressionProgressReport>(report =>
-        {
-            ProgressPercentage = report.PercentComplete;
-            ProgressText = $"{report.ProcessedFiles} / {report.TotalFiles} (%{report.PercentComplete:0.0})";
-            CurrentActionText = $"Sıkıştırma kaldırılıyor: {Path.GetFileName(report.CurrentFilePath)}";
-
-            if (!string.IsNullOrEmpty(report.CurrentFilePath) && fileMap.TryGetValue(report.CurrentFilePath, out var currentVm))
-            {
-                currentVm.Refresh();
-            }
-
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-        });
-
-        try
-        {
-            var targetModels = selectedItems.Select(vm => vm.Model).ToList();
-            var summary = await _compressionService.DecompressFilesAsync(
-                targetModels,
-                maxDegreeOfParallelism: 4,
-                progress: progress,
-                cancellationToken: token);
-
-            foreach (var item in selectedItems)
-            {
-                item.Refresh();
-            }
-
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-
-            StatusMessage = $"Sıkıştırma kaldırma tamamlandı: {summary.SuccessfulCount} başarılı, {summary.FailedCount} hata.";
-            CurrentActionText = "Dosyalar orijinal boyutlarına döndürüldü.";
-            ProgressPercentage = 100;
-            LogActivity($"Sıkıştırma kaldırma bitti: {summary.SuccessfulCount} başarılı, {summary.FailedCount} hata.");
-        }
-        catch (OperationCanceledException)
-        {
-            StatusMessage = "Sıkıştırma kaldırma işlemi iptal edildi.";
-            CurrentActionText = "Kullanıcı işlemi durdurdu.";
-            foreach (var item in selectedItems)
-            {
-                item.Refresh();
-            }
-            TotalBytesSaved = Files.Sum(f => f.BytesSaved);
-            UpdateSelectionMetrics();
-            UpdateStorageMetrics();
-            LogActivity("Sıkıştırma kaldırma iptal edildi.");
-        }
-        catch (Exception ex)
-        {
-            StatusMessage = $"Hata: {ex.Message}";
-            CurrentActionText = "Sıkıştırma kaldırılırken hata oluştu.";
-            LogActivity($"Sıkıştırma kaldırma hatası: {ex.Message}");
-        }
-        finally
-        {
-            _activeCts?.Dispose();
-            _activeCts = null;
-            IsCompressing = false;
-        }
-    }
-
-    private void ExecuteCancel()
-    {
-        if (IsBusy && _activeCts != null && !_activeCts.IsCancellationRequested)
-        {
-            StatusMessage = "İşlem iptal ediliyor...";
-            CurrentActionText = "Lütfen bekleyin...";
-            _activeCts.Cancel();
-            LogActivity("İptal isteği gönderildi.");
-        }
-    }
-
-    private void ExecuteRestartAsAdmin()
-    {
-        LogActivity("Yönetici olarak yeniden başlatılıyor...");
-        _adminService.RestartAsAdmin();
-    }
-
-    internal void OnItemSelectionChanged(FileItemViewModel? _ = null)
-    {
         UpdateSelectionMetrics();
     }
 
@@ -1133,6 +614,7 @@ public class MainViewModel : ViewModelBase
         (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (CompressSelectedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (DecompressSelectedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (SimulateSelectedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         (SelectAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (DeselectAllCommand as RelayCommand)?.RaiseCanExecuteChanged();
         (InvertSelectionCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -1142,6 +624,10 @@ public class MainViewModel : ViewModelBase
         (DecompressSingleFileCommand as AsyncRelayCommand<FileItemViewModel>)?.RaiseCanExecuteChanged();
         (ExcludeFromListCommand as RelayCommand<FileItemViewModel>)?.RaiseCanExecuteChanged();
         (OpenFileLocationCommand as RelayCommand<FileItemViewModel>)?.RaiseCanExecuteChanged();
+        (OpenFileCommand as RelayCommand<FileItemViewModel>)?.RaiseCanExecuteChanged();
         (CopyPathCommand as RelayCommand<FileItemViewModel>)?.RaiseCanExecuteChanged();
+        (ExportActivityLogsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (RestoreLastOperationCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        (ScheduleWeeklyTaskCommand as RelayCommand)?.RaiseCanExecuteChanged();
     }
 }

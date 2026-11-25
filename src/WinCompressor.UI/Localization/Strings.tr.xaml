@@ -1,0 +1,120 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!--
+      Faz 5.3 i18n: Türkçe (varsayılan) sözlük. Pilot kapsamın kalanı
+      kapatıldı: MainWindow.xaml'deki TÜM görsel metinler anahtar anahtar
+      buraya taşındı. EN karşılıkları Strings.en.xaml'de tutulur; parite
+      LocalizationParityTests ile kilitlidir.
+    -->
+
+    <!-- Pencere ve başlık -->
+    <sys:String x:Key="WindowTitle">WinCompressor - Windows Yerel Sıkıştırma Yöneticisi</sys:String>
+    <sys:String x:Key="AppSubtitle">Windows Yerel Sıkıştırma Yöneticisi • NTFS LZNT1 &amp; WOF CompactOS (XPRESS / LZX) Şeffaf Sıkıştırma</sys:String>
+
+    <!-- Üst şerit: yönetici durumu -->
+    <sys:String x:Key="AdminModePill">Yönetici Modu (LZX ve XPRESS Aktif)</sys:String>
+    <sys:String x:Key="StandardModePill">Standart Mod (Yönetici Olarak Yeniden Başlat)</sys:String>
+    <sys:String x:Key="RestartAsAdminToolTip">Gelişmiş LZX ve XPRESS CompactOS algoritmalarını kullanabilmek için yönetici olarak yeniden başlatın.</sys:String>
+
+    <!-- Satır 1: klasör seçimi ve tarama -->
+    <sys:String x:Key="BrowseButton">📁 Gözat...</sys:String>
+    <sys:String x:Key="ScanButton">🔍 TARA</sys:String>
+    <sys:String x:Key="ScanButtonSubtitle">Klasörü İncele</sys:String>
+    <sys:String x:Key="QuickLabel">Hızlı:</sys:String>
+    <sys:String x:Key="DriveCButton">C: Sürücüsü</sys:String>
+    <sys:String x:Key="DriveDButton">D: Sürücüsü</sys:String>
+    <sys:String x:Key="UserFolderButton">Kullanıcı Klasörü</sys:String>
+    <sys:String x:Key="IncludeSubdirsOption">Alt klasörleri dahil et</sys:String>
+    <sys:String x:Key="OnlyUncompressedOption">Sadece sıkıştırılmamış dosyaları listele</sys:String>
+    <sys:String x:Key="IncludeAppDataOption">AppData'yı dahil et</sys:String>
+    <sys:String x:Key="IncludeAppDataToolTip">Varsayılan olarak hariç tutulan AppData klasörlerini de tara</sys:String>
+    <sys:String x:Key="GameLibraryToolTipPrefix">Oyun kütüphanesi: </sys:String>
+
+    <!-- Satır 2: algoritma kartları -->
+    <sys:String x:Key="CompressionLabel">Sıkıştırma</sys:String>
+    <sys:String x:Key="AlgorithmLabel">Algoritması:</sys:String>
+    <sys:String x:Key="RecommendedBadge">ÖNERİLEN</sys:String>
+
+    <!-- Satır 3: arama / filtre / seçim araç çubuğu -->
+    <sys:String x:Key="SearchPlaceholder">🔍 Dosya adı, uzantı veya klasör ara...</sys:String>
+    <sys:String x:Key="FilterAll">Tümü</sys:String>
+    <sys:String x:Key="FilterExecutables">Programlar</sys:String>
+    <sys:String x:Key="FilterLargeFiles">Büyük (&gt;50MB)</sys:String>
+    <sys:String x:Key="FilterTextCode">Metin &amp; Kod</sys:String>
+    <sys:String x:Key="FilterDataMedia">Veri &amp; Oyun</sys:String>
+    <sys:String x:Key="FilterCompactOs">CompactOS</sys:String>
+    <sys:String x:Key="FilterCompactOsToolTip">XPRESS veya LZX (CompactOS/WOF) algoritmasıyla sıkıştırılmış dosyalar</sys:String>
+    <sys:String x:Key="SelectAllButton">Tümünü Seç</sys:String>
+    <sys:String x:Key="SelectAllToolTip">Görüntülenen dosyaların tümünü seç</sys:String>
+    <sys:String x:Key="DeselectAllButton">Temizle</sys:String>
+    <sys:String x:Key="DeselectAllToolTip">Tüm seçimleri kaldır</sys:String>
+    <sys:String x:Key="InvertSelectionButton">Tersine Çevir</sys:String>
+    <sys:String x:Key="InvertSelectionToolTip">Mevcut dosya seçimlerini tersine çevir</sys:String>
+    <sys:String x:Key="SelectLargeFilesButton">Büyükleri Seç (&gt;50 MB)</sys:String>
+    <sys:String x:Key="SelectLargeFilesToolTip">50 MB ve üzeri büyük dosyaları seç</sys:String>
+    <sys:String x:Key="ColumnsButton">▦ Sütunlar</sys:String>
+    <sys:String x:Key="ColumnsButtonToolTip">Gizlenen sütunları geri getir</sys:String>
+
+    <!-- Boş durum -->
+    <sys:String x:Key="EmptyStateTitle">Henüz dosya taranmadı</sys:String>
+    <sys:String x:Key="EmptyStateHint">Yukarıdan taranacak klasörü seçip 'TARA' butonuna tıklayın.</sys:String>
+
+    <!-- DataGrid sütun başlıkları (WPF: DataGridColumn ağaç üyesi olmadığından
+         Header eleman olarak bağlanır) -->
+    <sys:String x:Key="ColumnFileName">Dosya Adı</sys:String>
+    <sys:String x:Key="ColumnFilePath">Klasör Yolu</sys:String>
+    <sys:String x:Key="ColumnSize">Orijinal Boyut</sys:String>
+    <sys:String x:Key="ColumnAllocated">Diskteki Boyut</sys:String>
+    <sys:String x:Key="ColumnSavings">Tasarruf</sys:String>
+    <sys:String x:Key="ColumnAlgorithm">Algoritma</sys:String>
+    <sys:String x:Key="ColumnAlgorithmToolTip">Dosyanın diskteki gerçek sıkıştırma formatı (tarama sonrası WOF probe'u ile tespit edilir)</sys:String>
+    <sys:String x:Key="ColumnEstimated">Tahmini Tasarruf</sys:String>
+    <sys:String x:Key="ColumnEstimatedToolTip">'Simüle Et' ile hesaplanan öngörü — gerçek bir garanti değildir</sys:String>
+    <sys:String x:Key="ColumnStatus">Durum</sys:String>
+    <sys:String x:Key="SelectAllHeaderToolTip">Tümünü Seç / Seçimi Kaldır</sys:String>
+
+    <!-- Sağtık menüleri -->
+    <sys:String x:Key="HideColumnMenu">👁 Bu sütunu gizle</sys:String>
+    <sys:String x:Key="OpenFileLocationMenu">📂 Dosya Konumunu Aç</sys:String>
+    <sys:String x:Key="CompressSingleMenu">⚡ Bu Dosyayı Sıkıştır</sys:String>
+    <sys:String x:Key="DecompressSingleMenu">📂 Sıkıştırmayı Kaldır</sys:String>
+    <sys:String x:Key="CopyPathMenu">📋 Dosya Yolunu Kopyala</sys:String>
+    <sys:String x:Key="ExcludeFromListMenu">❌ Listeden Çıkar</sys:String>
+
+    <!-- Günlük çekmecesi -->
+    <sys:String x:Key="ActivityLogTitle">📋 İşlem Günlüğü</sys:String>
+    <sys:String x:Key="LogsExportButton">📤 Dışa Aktar</sys:String>
+    <sys:String x:Key="LogsClearButton">Günlüğü Temizle</sys:String>
+    <sys:String x:Key="LogsExportToolTip">Günlüğü .txt veya .csv olarak kaydet</sys:String>
+    <sys:String x:Key="RecordsCountSuffix"> kayıt</sys:String>
+
+    <!-- Alt şerit: depolama metrikleri -->
+    <sys:String x:Key="StorageMetricsLabel">Depolama Metrikleri:</sys:String>
+    <sys:String x:Key="StorageOriginalLabel">Orijinal: </sys:String>
+    <sys:String x:Key="StorageOnDiskLabel">  ➜  Diskteki: </sys:String>
+    <sys:String x:Key="StorageSavedLabel">  ➜  Kazanılan: </sys:String>
+    <sys:String x:Key="DiskUsageToolTip">Diskte kaplanan boyut</sys:String>
+    <sys:String x:Key="SavedSpaceToolTip">Geri kazanılan tasarruf alanı</sys:String>
+
+    <!-- Alt şerit: istatistik parçaları -->
+    <sys:String x:Key="StatsScannedPrefix">Taranan: </sys:String>
+    <sys:String x:Key="StatsFilesInfix"> dosya (</sys:String>
+    <sys:String x:Key="StatsSelectedInfix">)  |  Seçili: </sys:String>
+    <sys:String x:Key="StatsCloseParen">)</sys:String>
+    <sys:String x:Key="StatsSavedLabel">Kazanılan Alan: </sys:String>
+    <sys:String x:Key="StatsStatusLabel">  •  Durum: </sys:String>
+
+    <!-- Alt şerit: eylem düğmeleri -->
+    <sys:String x:Key="RestoreLastOperationButton">⤺ Son İşlemi Geri Al</sys:String>
+    <sys:String x:Key="RestoreLastOperationToolTip">Son sıkıştırma işleminde değişen dosyaları eski algoritmalarına döndürür.</sys:String>
+    <sys:String x:Key="ScheduleWeeklyButton">🗓 Haftalık Görev</sys:String>
+    <sys:String x:Key="ScheduleWeeklyToolTip">Seçili klasör için Pazartesi 03:00 sıkıştırma görevi oluşturur (Görev Zamanlayıcı → WinCompressor).</sys:String>
+    <sys:String x:Key="CancelButton">✕ İptal</sys:String>
+    <sys:String x:Key="SimulateButton">🔮 Simüle Et</sys:String>
+    <sys:String x:Key="SimulateToolTip">Seçili dosyalar için seçilen algoritmayla tahmini tasarruf hesaplar (dosyalara dokunmaz).</sys:String>
+    <sys:String x:Key="DecompressButton">📂 Sıkıştırmayı Kaldır</sys:String>
+    <sys:String x:Key="DecompressToolTip">Seçili dosyaları sıkıştırılmamış orijinal durumlarına döndürür.</sys:String>
+    <sys:String x:Key="CompressButton">⚡ Seçilenleri Sıkıştır</sys:String>
+    <sys:String x:Key="CompressToolTip">Seçili dosyaları seçilen algoritma ile sıkıştırır.</sys:String>
+</ResourceDictionary>

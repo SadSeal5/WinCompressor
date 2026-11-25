@@ -1,0 +1,115 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <!-- Faz 5.3 i18n: English dictionary (mirrors Strings.tr.xaml; parity
+         locked by LocalizationParityTests). -->
+
+    <!-- Window and title -->
+    <sys:String x:Key="WindowTitle">WinCompressor - Windows Native Compression Manager</sys:String>
+    <sys:String x:Key="AppSubtitle">Windows Native Compression Manager • NTFS LZNT1 &amp; CompactOS WOF (XPRESS / LZX) Transparent Compression</sys:String>
+
+    <!-- Header: admin status -->
+    <sys:String x:Key="AdminModePill">Administrator Mode (LZX &amp; XPRESS Enabled)</sys:String>
+    <sys:String x:Key="StandardModePill">Standard Mode (Restart as Administrator)</sys:String>
+    <sys:String x:Key="RestartAsAdminToolTip">Restart as administrator to use the advanced LZX and XPRESS CompactOS algorithms.</sys:String>
+
+    <!-- Row 1: folder selection and scan -->
+    <sys:String x:Key="BrowseButton">📁 Browse...</sys:String>
+    <sys:String x:Key="ScanButton">🔍 SCAN</sys:String>
+    <sys:String x:Key="ScanButtonSubtitle">Inspect Folder</sys:String>
+    <sys:String x:Key="QuickLabel">Quick:</sys:String>
+    <sys:String x:Key="DriveCButton">C: Drive</sys:String>
+    <sys:String x:Key="DriveDButton">D: Drive</sys:String>
+    <sys:String x:Key="UserFolderButton">User Folder</sys:String>
+    <sys:String x:Key="IncludeSubdirsOption">Include subfolders</sys:String>
+    <sys:String x:Key="OnlyUncompressedOption">List only uncompressed files</sys:String>
+    <sys:String x:Key="IncludeAppDataOption">Include AppData</sys:String>
+    <sys:String x:Key="IncludeAppDataToolTip">Also scan AppData folders that are excluded by default</sys:String>
+    <sys:String x:Key="GameLibraryToolTipPrefix">Game library: </sys:String>
+
+    <!-- Row 2: algorithm cards -->
+    <sys:String x:Key="CompressionLabel">Compression</sys:String>
+    <sys:String x:Key="AlgorithmLabel">Algorithm:</sys:String>
+    <sys:String x:Key="RecommendedBadge">RECOMMENDED</sys:String>
+
+    <!-- Row 3: search / filter / selection toolbar -->
+    <sys:String x:Key="SearchPlaceholder">🔍 Search by file name, extension or folder...</sys:String>
+    <sys:String x:Key="FilterAll">All</sys:String>
+    <sys:String x:Key="FilterExecutables">Programs</sys:String>
+    <sys:String x:Key="FilterLargeFiles">Large (&gt;50MB)</sys:String>
+    <sys:String x:Key="FilterTextCode">Text &amp; Code</sys:String>
+    <sys:String x:Key="FilterDataMedia">Data &amp; Games</sys:String>
+    <sys:String x:Key="FilterCompactOs">CompactOS</sys:String>
+    <sys:String x:Key="FilterCompactOsToolTip">Files compressed with the XPRESS or LZX (CompactOS/WOF) algorithm</sys:String>
+    <sys:String x:Key="SelectAllButton">Select All</sys:String>
+    <sys:String x:Key="SelectAllToolTip">Select all displayed files</sys:String>
+    <sys:String x:Key="DeselectAllButton">Clear</sys:String>
+    <sys:String x:Key="DeselectAllToolTip">Clear all selections</sys:String>
+    <sys:String x:Key="InvertSelectionButton">Invert</sys:String>
+    <sys:String x:Key="InvertSelectionToolTip">Invert the current file selection</sys:String>
+    <sys:String x:Key="SelectLargeFilesButton">Select Large (&gt;50 MB)</sys:String>
+    <sys:String x:Key="SelectLargeFilesToolTip">Select files of 50 MB and above</sys:String>
+    <sys:String x:Key="ColumnsButton">▦ Columns</sys:String>
+    <sys:String x:Key="ColumnsButtonToolTip">Restore hidden columns</sys:String>
+
+    <!-- Empty state -->
+    <sys:String x:Key="EmptyStateTitle">No files scanned yet</sys:String>
+    <sys:String x:Key="EmptyStateHint">Pick a folder above and click the 'SCAN' button.</sys:String>
+
+    <!-- DataGrid column headers -->
+    <sys:String x:Key="ColumnFileName">File Name</sys:String>
+    <sys:String x:Key="ColumnFilePath">Folder Path</sys:String>
+    <sys:String x:Key="ColumnSize">Original Size</sys:String>
+    <sys:String x:Key="ColumnAllocated">On-Disk Size</sys:String>
+    <sys:String x:Key="ColumnSavings">Saved</sys:String>
+    <sys:String x:Key="ColumnAlgorithm">Algorithm</sys:String>
+    <sys:String x:Key="ColumnAlgorithmToolTip">The file's actual on-disk compression format (detected via WOF probe after scanning)</sys:String>
+    <sys:String x:Key="ColumnEstimated">Estimated Savings</sys:String>
+    <sys:String x:Key="ColumnEstimatedToolTip">Forecast computed with 'Simulate' — not an actual guarantee</sys:String>
+    <sys:String x:Key="ColumnStatus">Status</sys:String>
+    <sys:String x:Key="SelectAllHeaderToolTip">Select All / Clear Selection</sys:String>
+
+    <!-- Context menus -->
+    <sys:String x:Key="HideColumnMenu">👁 Hide this column</sys:String>
+    <sys:String x:Key="OpenFileLocationMenu">📂 Open File Location</sys:String>
+    <sys:String x:Key="CompressSingleMenu">⚡ Compress This File</sys:String>
+    <sys:String x:Key="DecompressSingleMenu">📂 Remove Compression</sys:String>
+    <sys:String x:Key="CopyPathMenu">📋 Copy File Path</sys:String>
+    <sys:String x:Key="ExcludeFromListMenu">❌ Remove from List</sys:String>
+
+    <!-- Activity log drawer -->
+    <sys:String x:Key="ActivityLogTitle">📋 Activity Log</sys:String>
+    <sys:String x:Key="LogsExportButton">📤 Export</sys:String>
+    <sys:String x:Key="LogsClearButton">Clear Log</sys:String>
+    <sys:String x:Key="LogsExportToolTip">Save the log as .txt or .csv</sys:String>
+    <sys:String x:Key="RecordsCountSuffix"> entries</sys:String>
+
+    <!-- Footer: storage metrics -->
+    <sys:String x:Key="StorageMetricsLabel">Storage Metrics:</sys:String>
+    <sys:String x:Key="StorageOriginalLabel">Original: </sys:String>
+    <sys:String x:Key="StorageOnDiskLabel">  ➜  On Disk: </sys:String>
+    <sys:String x:Key="StorageSavedLabel">  ➜  Saved: </sys:String>
+    <sys:String x:Key="DiskUsageToolTip">Space used on disk</sys:String>
+    <sys:String x:Key="SavedSpaceToolTip">Reclaimed savings space</sys:String>
+
+    <!-- Footer: stats fragments -->
+    <sys:String x:Key="StatsScannedPrefix">Scanned: </sys:String>
+    <sys:String x:Key="StatsFilesInfix"> files (</sys:String>
+    <sys:String x:Key="StatsSelectedInfix">)  |  Selected: </sys:String>
+    <sys:String x:Key="StatsCloseParen">)</sys:String>
+    <sys:String x:Key="StatsSavedLabel">Space Saved: </sys:String>
+    <sys:String x:Key="StatsStatusLabel">  •  Status: </sys:String>
+
+    <!-- Footer: action buttons -->
+    <sys:String x:Key="RestoreLastOperationButton">⤺ Undo Last Operation</sys:String>
+    <sys:String x:Key="RestoreLastOperationToolTip">Restores files changed in the last compression to their previous algorithms.</sys:String>
+    <sys:String x:Key="ScheduleWeeklyButton">🗓 Weekly Task</sys:String>
+    <sys:String x:Key="ScheduleWeeklyToolTip">Creates a Monday 03:00 compression task for the selected folder (Task Scheduler → WinCompressor).</sys:String>
+    <sys:String x:Key="CancelButton">✕ Cancel</sys:String>
+    <sys:String x:Key="SimulateButton">🔮 Simulate</sys:String>
+    <sys:String x:Key="SimulateToolTip">Estimates savings for the selected files with the chosen algorithm (does not touch files).</sys:String>
+    <sys:String x:Key="DecompressButton">📂 Remove Compression</sys:String>
+    <sys:String x:Key="DecompressToolTip">Restores the selected files to their uncompressed original state.</sys:String>
+    <sys:String x:Key="CompressButton">⚡ Compress Selected</sys:String>
+    <sys:String x:Key="CompressToolTip">Compresses the selected files with the chosen algorithm.</sys:String>
+</ResourceDictionary>

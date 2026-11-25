@@ -96,6 +96,13 @@ public class AsyncRelayCommand : ICommand
         {
             await _executeAsync();
         }
+        catch (Exception ex)
+        {
+            // T4-N5 (inceleme turu 4): async void'dan kaçan istisna süreci düşürür;
+            // komut gövdeleri kendi hatalarını yönetse de bu genel catch bir
+            // sigortadır. Hata izlenebilirlik için Debug akışına yazılır.
+            System.Diagnostics.Debug.WriteLine($"Unhandled async command exception: {ex}");
+        }
         finally
         {
             _isExecuting = false;
@@ -148,6 +155,11 @@ public class AsyncRelayCommand<T> : ICommand
         {
             T? arg = parameter is T val ? val : default;
             await _executeAsync(arg);
+        }
+        catch (Exception ex)
+        {
+            // T4-N5 (inceleme turu 4): async void süreci düşürmesin — genel sigorta.
+            System.Diagnostics.Debug.WriteLine($"Unhandled async command exception: {ex}");
         }
         finally
         {

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>WinCompressor.Cli</AssemblyName>
+    <Version>2.1.0</Version>
+    <Product>WinCompressor CLI</Product>
+    <Description>WinCompressor betik arabirimi: scan / compress / decompress</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\WinCompressor.Core\WinCompressor.Core.csproj" />
+  </ItemGroup>
+
+</Project>
