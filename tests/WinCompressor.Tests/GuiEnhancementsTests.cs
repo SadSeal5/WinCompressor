@@ -340,7 +340,7 @@ public class GuiEnhancementsTests
         Assert.Single(vm.Files);
         Assert.Equal("keep.bin", vm.Files[0].FileName);
         Assert.Equal(1000, vm.TotalUncompressedBytes);
-        Assert.Contains("remove.bin", vm.ActivityLogs.Last());
+        Assert.Contains("remove.bin", vm.ActivityLogs.Last().Message);
     }
 
     [Fact]
@@ -356,7 +356,7 @@ public class GuiEnhancementsTests
         vm.OpenFileLocationCommand.Execute(vm.Files[0]);
 
         Assert.Equal("C:\\TestApp\\app.exe", openedPath);
-        Assert.Contains("app.exe", vm.ActivityLogs.Last());
+        Assert.Contains("app.exe", vm.ActivityLogs.Last().Message);
     }
 
     [Fact]
@@ -372,7 +372,7 @@ public class GuiEnhancementsTests
         vm.CopyPathCommand.Execute(vm.Files[0]);
 
         Assert.Equal("C:\\TestApp\\app.exe", copiedText);
-        Assert.Contains("C:\\TestApp\\app.exe", vm.ActivityLogs.Last());
+        Assert.Contains("C:\\TestApp\\app.exe", vm.ActivityLogs.Last().Message);
     }
 
     [Fact]
@@ -485,7 +485,7 @@ public class GuiEnhancementsTests
 
         Assert.Equal(tempDir, vm.SelectedPath);
         Assert.Contains(tempDir, vm.StatusMessage);
-        Assert.Contains("Sürükle-bırak", vm.ActivityLogs.Last());
+        Assert.Contains("Sürükle-bırak", vm.ActivityLogs.Last().Message);
     }
 
     [Fact]
@@ -496,7 +496,7 @@ public class GuiEnhancementsTests
 
         vm.LogActivity("Özel test log mesajı");
         Assert.Equal(initialCount + 1, vm.ActivityLogs.Count);
-        Assert.Contains("Özel test log mesajı", vm.ActivityLogs.Last());
+        Assert.Contains("Özel test log mesajı", vm.ActivityLogs.Last().Message);
 
         // Toggle visibility
         Assert.False(vm.IsActivityLogVisible);

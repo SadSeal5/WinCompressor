@@ -141,10 +141,35 @@ public class CompressionServiceTests
         Assert.Equal(0, summary.FailedCount);
         Assert.True(summary.TotalBytesSaved > 0);
 
-        // Decompress all
-        var decompressSummary = await service.DecompressFilesAsync(files, maxDegreeOfParallelism: 2);
+        // Decompress all with synchronous progress capture so report totals are assertable
+        long expectedSavingsRemoved = files.Sum(f => f.BytesSaved);
+        var decompressReports = new List<CompressionProgressReport>();
+        var decompressSummary = await service.DecompressFilesAsync(
+            files, maxDegreeOfParallelism: 2, progress: new SyncProgress<CompressionProgressReport>(decompressReports.Add));
+
         Assert.Equal(4, decompressSummary.TotalFiles);
         Assert.Equal(4, decompressSummary.SuccessfulCount);
+
+        // REGRESSION (Phase 1.1): decompression summary must reflect real post-op sizes.
+        // After a successful decompress nothing is saved on disk anymore...
+        Assert.Equal(0, decompressSummary.TotalBytesSaved);
+        // ...and the allocated bytes returned to the logical size.
+        Assert.Equal(decompressSummary.TotalOriginalBytes, decompressSummary.TotalAllocatedBytes);
+
+        // REGRESSION (Phase 1.1): progress reports carry the savings removed from disk.
+        var lastReport = decompressReports.Last();
+        Assert.Equal(4, lastReport.ProcessedFiles);
+        Assert.Equal(4, lastReport.SuccessfulFiles);
+        Assert.Equal(0, lastReport.FailedFiles);
+        Assert.Equal(expectedSavingsRemoved, lastReport.TotalBytesSaved);
+    }
+
+    /// <summary>IProgress that records reports synchronously, without a sync-context hop.</summary>
+    private sealed class SyncProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _onReport;
+        public SyncProgress(Action<T> onReport) => _onReport = onReport;
+        public void Report(T value) => _onReport(value);
     }
 
     [Fact]
